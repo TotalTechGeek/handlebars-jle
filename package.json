@@ -31,8 +31,8 @@
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js",
       "types": "./index.d.ts"
-    },
-    "types": "./index.d.ts",
-    "sideEffects": false
-  }
+    }
+  },
+  "types": "./index.d.ts",
+  "sideEffects": false
 }
