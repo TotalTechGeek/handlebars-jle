@@ -28,14 +28,13 @@ Element = startTag:sTag content:Content endTag:eTag {
         lastChunk[lastChunk.length-1].cat.push(item)
       }
       if (!defaulted) chunks.push('')
-      return { cat: [startTag.newline ? '\n' : '', { if: [startTag.args[0], ...chunks.flat()] }] };
+      return { cat: { if: [startTag.args[0], ...chunks.flat()] } };
     }
-    return { cat: [startTag.newline ? '\n' : '',  { cat: { [startTag.name]: [...startTag.args, content] }}] };
+    return { cat: { [startTag.name]: [...startTag.args, content] }};
   }
   / startTag:selfTag { return startTag; }
 
-sTag = "\n" " "* "{{#" name:TagName args:Arg* "}}" "\n" { return { name, args, newline: true }; }
-/ "{{#" name:TagName args:Arg* "}}" { return { name, args }; }
+sTag = "{{#" name:TagName args:Arg* "}}" { return { name, args }; }
 selfTag = "{{" name:TagName args:Arg* "}}" { 
   if (name === "this") return { var: '' }
   if (name === "@key") return { var: '../index'}

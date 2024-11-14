@@ -2,6 +2,7 @@ import { AsyncLogicEngine, Compiler, Constants } from "json-logic-engine";
 import { parse } from './parser/parser.min.js'
 
 export const engine = new AsyncLogicEngine();
+engine.fallback.methods = engine.methods
 const HashArg = Symbol.for('HashArg');
 
 function each (iterable, func) {
@@ -26,16 +27,16 @@ function each (iterable, func) {
   
   engine.addMethod('each', {
     method: (data, context, above, engine) => {
-      const iterable = engine.run(data[0], context, above, engine)
+      const iterable = (engine.fallback || engine).run(data[0], context, above, engine)
       if (!iterable) return ''
       let res = ''
       if (Array.isArray(iterable)) {
         for (let i = 0; i < iterable.length; i++) {
-          res += engine.run(data[1], iterable[i], { above: [{ index: i }, context, ...above] })
+          res += (engine.fallback || engine).run(data[1], iterable[i], { above: [{ index: i }, context, ...above] })
         }
       } else if (typeof iterable === 'object') {
         for (const key in iterable) {
-          res += engine.run(data[1], iterable[key], { above: [{ index: key }, context, ...above] })
+          res += (engine.fallback || engine).run(data[1], iterable[key], { above: [{ index: key }, context, ...above] })
         }
       }
       return res
@@ -127,14 +128,14 @@ engine.addMethod('with', {
         const content = rArgs.pop()
 
         const optionsLength = Object.keys(options).length
-        for (const key in options) options[key] = engine.run(options[key], context, { above })
-        if (rArgs.length) rArgs[0] = engine.run(rArgs[0], context, { above })
+        for (const key in options) options[key] = (engine.fallback || engine).run(options[key], context, { above })
+        if (rArgs.length) rArgs[0] = (engine.fallback || engine).run(rArgs[0], context, { above })
 
-        if (optionsLength && rArgs.length) return engine.run(content, { ...options, ...rArgs[0] }, { above: [null, context, ...above] })
-        if (optionsLength) return engine.run(content, options, { above: [null, context, ...above] })
-        if (!rArgs.length) return engine.run(content, {}, { above: [null, context, ...above] })
+        if (optionsLength && rArgs.length) return (engine.fallback || engine).run(content, { ...options, ...rArgs[0] }, { above: [null, context, ...above] })
+        if (optionsLength) return (engine.fallback || engine).run(content, options, { above: [null, context, ...above] })
+        if (!rArgs.length) return (engine.fallback || engine).run(content, {}, { above: [null, context, ...above] })
 
-        return engine.run(content, rArgs[0], { above })
+        return (engine.fallback || engine).run(content, rArgs[0], { above })
     },
     asyncMethod: async (args, context, above, engine) => {
         const [rArgs, options] = processArgs(args)
@@ -195,22 +196,29 @@ engine.addMethod('object', (args) => {
 }, { deterministic: true, sync: true });
 
 
+
 /**
  * Extracts hash arguments from the arguments array and simplifies it into an object,
  * returning the simplified arguments array and the hash arguments object
  * @param {any[]} args 
  * @returns {[Record<string, any>, any[]]}
  */
-export function processArgs (args) {
+export function processArgs (args, nullIfEmpty = false) {
     const rArgs = []
-    const options = {} 
-
+    let options = {} 
+    let assigned = false
     for (const arg of args) {
-        if (arg && arg.preserve?.[HashArg]) Object.assign(options, arg.preserve);
-        else if (arg && arg[HashArg]) Object.assign(options, arg);
+        if (arg && arg.preserve?.[HashArg]) { 
+          Object.assign(options, arg.preserve);
+          assigned = true;
+        }
+        else if (arg && arg[HashArg]) {
+          Object.assign(options, arg);
+          assigned = true;
+        }
         else rArgs.push(arg);
     }
-
+    if (nullIfEmpty && !assigned) options = null
     return [rArgs, options];
 }
 

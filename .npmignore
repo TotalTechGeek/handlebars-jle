@@ -10,3 +10,5 @@ bench/
 perf*.js
 *.test.js
 experiments/
+parser/
+/index.js
