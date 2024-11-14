@@ -176,3 +176,4 @@ dist
 
 parser/parser.min.js
 *.d.ts
+experiments

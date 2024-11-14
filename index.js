@@ -183,18 +183,20 @@ engine.addMethod('match', (args) => {
     const value = args[0]
     const [pArgs, options] = processArgs(args.slice(1))
     if (options[value]) return options[value]
-    for (let i = 1; i < pArgs.length; i += 2) if (value === pArgs[i]) return pArgs[i+1]
+    for (let i = 0; i < pArgs.length; i += 2) if (value === pArgs[i]) return pArgs[i+1]
     return pArgs[pArgs.length - 1]
 }, { deterministic: true, sync: true });
 
 engine.addMethod('merge', (args) => Object.assign({}, ...args), { deterministic: true, sync: true });
 
-engine.addMethod('object', (args) => {
+engine.addMethod('obj', (args) => {
     const [pArgs, obj] = processArgs(args)
     for (let i = 0; i < pArgs.length; i += 2) obj[pArgs[i]] = pArgs[i+1]
     return obj
 }, { deterministic: true, sync: true });
 
+engine.methods.object = engine.methods.obj;
+engine.methods.array = engine.methods.arr;
 
 
 /**
