@@ -1,6 +1,6 @@
 {
   "name": "handlebars-jle",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "module": "index.js",
   "type": "module",
   "devDependencies": {
@@ -13,6 +13,7 @@
     "json-logic-engine": "^2.1.2"
   },
   "scripts": {
+    "prepublish": "npm run build",
     "build": "rm *.d.ts parser/*.d.ts && peggy --format es --cache -o parser/parser.js parser/grammar.peggy && bun build --minify parser/parser.js --outfile parser/parser.min.js && rm parser/parser.js && tsc index.js --declaration --emitDeclarationOnly --allowJs --target ESNext --moduleResolution bundler"
   }
 }
