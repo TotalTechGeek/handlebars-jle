@@ -16,6 +16,7 @@ Some of the obvious differences include:
 - The whitespace control is currently not supported in the grammar. (I may add it later) Ex. `{{~foo}}` is not supported.
 - Partials are implemented via a helper rather than dedicated syntax.
 - To avoid additional syntax, `as` is not supported in block expressions, I chose to use hash arguments in `with` instead.
+- Supports an (optimized) Interpreted Mode for both synchronous and asynchronous execution; this means you execute templates in browser contexts that disallow `new Function` or `eval`.
 
 I believe these differences are relatively minor and do not impact most use cases, and should be easy to work aorund, but I might iterate on this in the future.
 
@@ -122,7 +123,7 @@ Here is a more interesting example, using async support:
 import { engine, compileAsync } from './handlebars-jle';
 
 
-engine.addMethod('fetch', async (url) => {
+engine.addMethod('fetch', async ([url]) => {
     const response = await fetch(url)
     return response.json()
 })

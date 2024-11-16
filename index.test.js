@@ -1,8 +1,7 @@
 
-import { compile, compileAsync, run, runAsync, compileToJSON, engine } from "./index.js"
+import { compile, compileAsync, interpreted, interpretedAsync, engine } from "./index.js"
 
-
-engine.addMethod('fetch', async (url) => {
+engine.addMethod('fetch', async ([url]) => {
     const response = await fetch(url)
     return response.json()
 })
@@ -20,7 +19,7 @@ export function Cases () {
 - {{@index}}: {{this}}
 {{/each}}`,
 'Person': `{{name}} is {{age}} years old.`,
-'SimpleIf': `{{#if account}}You have an account!{{else}}}You have no account!{{/if}}`,
+'SimpleIf': `{{#if account}}You have an account!{{else}}You have no account!{{/if}}`,
 'NestedIf': `{{#if account}}You have an account!{{else if (gte age 18)}}You are an adult, but you have no account!{{else}}You have no account!{{/if}}`,
 'SimpleWith': `{{#with name='Bob'}}Hi {{name}}!{{/with}}`,
 'SimpleWithVar': `{{#with name=(default username email)}}Hi {{name}}!{{/with}}`,
@@ -171,7 +170,7 @@ export async function RunAsync(script, data) {
  * @test #Example, #ExampleData returns true
  */
 export function RunMethodMatch(script, data) {
-    return run(compileToJSON(script), data) === Run(script, data)
+    return interpreted(script)(data) === Run(script, data)
 }
 
 
@@ -204,5 +203,5 @@ export function RunMethodMatch(script, data) {
  * @test #Example, #ExampleData resolves true
  */
 export async function RunMethodAsyncMatch(script, data) {
-    return (await runAsync(compileToJSON(script), data)) === (await RunAsync(script, data))
+    return (await interpretedAsync(script)(data)) === (await RunAsync(script, data))
 }

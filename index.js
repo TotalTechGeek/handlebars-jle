@@ -244,23 +244,25 @@ export async function compileAsync (str) {
 
 
 /**
- * Runs the logic synchronously with the data
+ * Creates a function that can be run with JSON data to get the result of running the logic.
+ * Does not use eval; so it can work in environments where eval is disabled.
  * @param {*} logic 
- * @param {*} data 
- * @returns {string} The result of running the logic with the data
+ * @returns {(data: any) => string} The result of running the logic with the data
  */
-export function run (logic, data) {
-    return engine.fallback.run(logic, data)
+export function interpreted (logic, logicEngine = engine.fallback) {
+    const parsed = compileToJSON(logic)
+    return (data) => logicEngine.run(parsed, data)
 }
 
 /**
- * Runs the logic asynchronously with the data
+ * Creates a function that can be run with JSON data to get the result of running the logic.
+ * Does not use eval; so it can work in environments where eval is disabled.
  * @param {*} logic
- * @param {*} data
- * @returns {Promise<string>} The result of running the logic with the data
+ * @returns {(data: any) => Promise<string>} The result of running the logic with the data
  */
-export async function runAsync (logic, data) {
-    return engine.run(logic, data)
+export function interpretedAsync (logic, logicEngine = engine) {
+    const parsed = compileToJSON(logic)
+    return data => logicEngine.run(parsed, data)
 }
 
 const preprocessRegex = /(\S.*)\s*\n\s*({{[^{}]*}})\s*\n/g;

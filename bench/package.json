@@ -1,0 +1,12 @@
+{
+  "name": "bench",
+  "version": "1.0.0",
+  "description": "Tests out handlebars-jle against alternatives",
+  "main": "index.js",
+  "author": "Jesse Daniel Mitchell",
+  "license": "MIT",
+  "dependencies": {
+    "handlebars": "^4.7.8",
+    "kbn-handlebars": "^1.0.0"
+  }
+}
