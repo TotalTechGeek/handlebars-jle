@@ -11,6 +11,9 @@ Handlebars.registerHelper('gte', (a, b) => a >= b)
 
 Elastic.default.registerHelper('arr', (...args) => args.slice(0, -1))
 Handlebars.registerHelper('arr', (...args) => args.slice(0, -1))
+Elastic.default.registerHelper('add', (a, b) => a + b)
+Handlebars.registerHelper('add', (a, b) => a + b)
+
 
 const simpleTemplate = 'Hello, {{name}}!'
 
@@ -61,4 +64,5 @@ runBench('NestedIf', cases.NestedIf, () => ({ account: true, age: 12 }))
 runBench('NestedIf (False)', cases.NestedIf, () => ({ account: false, age: 12 }))
 runBench('NestedIf (18)', cases.NestedIf, () => ({ account: true, age: 18 }))
 runBench('EachStatic', cases.EachStatic, () => ({}))
+runBench('AddExampleWithTraversal', cases.AddExampleWithTraversal, () => ({ addend: 10 }))
 runBench('Example 1', cases.Example, () => (cases.ExampleData))

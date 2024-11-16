@@ -60,7 +60,10 @@ ExampleData: {
     "buttonLabel": "Welcome to the wonderful world of templating engines!"
 },
 'SimpleJSON': `{{json (obj name='John' age=12)}}`,
-'SimpleJSON2': `{{json (obj 'name' 'John' 'age' 12)}}`
+'SimpleJSON2': `{{json (obj 'name' 'John' 'age' 12)}}`,
+'AddExampleWithTraversal': `{{#each (arr 1 2 3 4 5)}}
+- {{add this ../addend}}
+{{/each}}`
     }
 }
 
@@ -97,6 +100,7 @@ ExampleData: {
  * @test #Example, #ExampleData
  * @test #SimpleJSON returns '{"name":"John","age":12}'
  * @test #SimpleJSON2 returns '{"name":"John","age":12}'
+ * @test #AddExampleWithTraversal, { addend: 10 }
  */
 export function Run(script, data) {
     return compile(script)(data)
@@ -139,6 +143,7 @@ export function Run(script, data) {
  * @test #Example, #ExampleData
  * @test #SimpleJSON resolves '{"name":"John","age":12}'
  * @test #SimpleJSON2 resolves '{"name":"John","age":12}'
+ * @test #AddExampleWithTraversal, { addend: 10 }
  */
 export async function RunAsync(script, data) {
     return (await compileAsync(script))(data)
@@ -168,6 +173,7 @@ export async function RunAsync(script, data) {
  * @test #SimpleWithVar, { email: 'j@j.com' } returns true
  * @test #EachStatic, {} returns true
  * @test #Example, #ExampleData returns true
+ * @test #AddExampleWithTraversal, { addend: 10 } returns true
  */
 export function RunMethodMatch(script, data) {
     return interpreted(script)(data) === Run(script, data)
@@ -201,6 +207,7 @@ export function RunMethodMatch(script, data) {
  * @test #FetchIterator, { items: [1, 2] } resolves true
  * @test #FetchIterator, { items: { a: 1 } } resolves true
  * @test #Example, #ExampleData resolves true
+ * @test #AddExampleWithTraversal, { addend: 10 } resolves true
  */
 export async function RunMethodAsyncMatch(script, data) {
     return (await interpretedAsync(script)(data)) === (await RunAsync(script, data))

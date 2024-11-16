@@ -40,7 +40,7 @@
     "async": false
   },
   "Run(#SimpleIf, { account: false })": {
-    "value": "}You have no account!",
+    "value": "You have no account!",
     "async": false
   },
   "Run(#NestedIf, { account: true, age: 12 })": {
@@ -100,7 +100,7 @@
     "async": true
   },
   "RunAsync(#SimpleIf, { account: false })": {
-    "value": "}You have no account!",
+    "value": "You have no account!",
     "async": true
   },
   "RunAsync(#NestedIf, { account: true, age: 12 })": {
@@ -150,5 +150,13 @@
   "Run(#Example, #ExampleData)": {
     "value": "<div class=\"simple-1\" style=\"background-color: blue; border: 1px solid black\">\n    <div class=\"colors\">\n        <span class=\"hello\">Hello George Washington! <strong>You have 999 messages!</strong></span> \n        <ul> \n            <li class=\"color\">red</li>\n            <li class=\"color\">green</li>\n            <li class=\"color\">blue</li>\n            <li class=\"color\">yellow</li>\n            <li class=\"color\">orange</li>\n            <li class=\"color\">pink</li>\n            <li class=\"color\">black</li>\n            <li class=\"color\">white</li>\n            <li class=\"color\">beige</li>\n            <li class=\"color\">brown</li>\n            <li class=\"color\">cyan</li>\n            <li class=\"color\">magenta</li>\n        </ul> \n    </div>\n    <button type=\"button\" class=\"primary\">Click me!</button>\n</div>",
     "async": false
+  },
+  "Run(#AddExampleWithTraversal, { addend: 10 })": {
+    "value": "\n- 11\n- 12\n- 13\n- 14\n- 15",
+    "async": false
+  },
+  "RunAsync(#AddExampleWithTraversal, { addend: 10 })": {
+    "value": "\n- 11\n- 12\n- 13\n- 14\n- 15",
+    "async": true
   }
 }
