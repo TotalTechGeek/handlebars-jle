@@ -1,6 +1,6 @@
 import Elastic from 'kbn-handlebars'
 import Handlebars from 'handlebars'
-import { compile, interpreted } from '../index.js'
+import { compile, interpreted, compileAsync } from '../index.js'
 import { Cases } from '../index.test.js'
 
 const cases = Cases()
@@ -27,7 +27,7 @@ Elastic.default.registerHelper('lowercase', (a) => a.toLowerCase())
 
 const simpleTemplate = 'Hello, {{name}}!'
 
-function runBench (name, script, data, iter = 1e6) {
+async function runBench (name, script, data, iter = 1e6) {
     const hbStart = performance.now()
     const template = Handlebars.compile(script, { noEscape: true })
     for (let i = 0; i < iter; i++) template(data(i))
@@ -48,34 +48,39 @@ function runBench (name, script, data, iter = 1e6) {
     for (let i = 0; i < iter; i++) jleInterp(data(i))
     const jleInterpEnd = performance.now()
 
+
+    const jleAsyncStart = performance.now()
+    const jleAsync = await compileAsync(script, { noEscape: true })
+    for (let i = 0; i < iter; i++) await jleAsync(data(i))
+    const jleAsyncEnd = performance.now()
+
+
     // Show relative performance, figure out fastest and slowest
     const hbTime = hbEnd - hbStart
     const elasticTime = elasticEnd - elasticStart
     const jleTime = jleEnd - jleStart
     const jleInterpTime = jleInterpEnd - jleInterpStart
 
-    const fastest = Math.min(hbTime, elasticTime, jleTime, jleInterpTime)
-    const slowest = Math.max(hbTime, elasticTime, jleTime, jleInterpTime)
-    
 
     console.log(`Handlebars ${name}: ${hbTime.toFixed(2)}ms | ${(hbTime / hbTime).toFixed(2)}x`)
     console.log(`Elastic ${name}: ${elasticTime.toFixed(2)}ms | ${(hbTime / elasticTime).toFixed(2)}x`)
     console.log(`JLE Interpreted ${name}: ${jleInterpTime.toFixed(2)}ms | ${(hbTime / jleInterpTime).toFixed(2)}x`)
+    console.log(`JLE Async ${name}: ${(jleAsyncEnd - jleAsyncStart).toFixed(2)}ms | ${(hbTime / (jleAsyncEnd - jleAsyncStart)).toFixed(2)}x`)
     console.log(`JLE ${name}: ${jleTime.toFixed(2)}ms | ${(hbTime / jleTime).toFixed(2)}x`)
     console.log('---')
 
 }
 
-runBench('Simple', simpleTemplate, () => ({ name: 'John' }))
-runBench('SimpleEach', cases.SimpleEach, () => ({ iterator: [1, 2, 3] }))
-runBench('SimpleIf', cases.SimpleIf, () => ({ account: true }))
-runBench('SimpleIf (False)', cases.SimpleIf, () => ({ account: false }))
-runBench('NestedIf', cases.NestedIf, () => ({ account: true, age: 12 }))
-runBench('NestedIf (False)', cases.NestedIf, () => ({ account: false, age: 12 }))
-runBench('NestedIf (18)', cases.NestedIf, () => ({ account: true, age: 18 }))
-runBench('EachStatic', cases.EachStatic, () => ({}))
-runBench('AddExampleWithTraversal', cases.AddExampleWithTraversal, () => ({ addend: 10 }))
-runBench('Example 1', cases.Example, () => (cases.ExampleData))
+await runBench('Simple', simpleTemplate, () => ({ name: 'John' }))
+await runBench('SimpleEach', cases.SimpleEach, () => ({ iterator: [1, 2, 3] }))
+await runBench('SimpleIf', cases.SimpleIf, () => ({ account: true }))
+await runBench('SimpleIf (False)', cases.SimpleIf, () => ({ account: false }))
+await runBench('NestedIf', cases.NestedIf, () => ({ account: true, age: 12 }))
+await runBench('NestedIf (False)', cases.NestedIf, () => ({ account: false, age: 12 }))
+await runBench('NestedIf (18)', cases.NestedIf, () => ({ account: true, age: 18 }))
+await runBench('EachStatic', cases.EachStatic, () => ({}))
+await runBench('AddExampleWithTraversal', cases.AddExampleWithTraversal, () => ({ addend: 10 }))
+await runBench('Example 1', cases.Example, () => (cases.ExampleData))
 
 
 const template = `
@@ -149,7 +154,7 @@ $replace:
   SERVICE_NAME: {{lowercase name}}
 `
 
-runBench('YAML', template, () => ({
+await runBench('YAML', template, () => ({
     name: 'wildFires',
     imageTag: '2712e0c8',
     env: {

@@ -71,7 +71,12 @@ ExampleData: {
 'ImplicitBoolean': `{{#account}}You have an account!{{/account}}`,
 // Calls the method if the data value is not found for Woot, because it's ambiguous
 'Fallthrough': `{{Woot}}`,
-'Unescaped': '{{{name}}}'
+'Unescaped': '{{{name}}}',
+'RecursiveVarTest': `{{#with name=(default username 'John') city='Austin'}}
+{{#each (arr 1 2 3)}}
+    - {{rvar 'username'}} {{rvar 'city'}} {{add . (rvar 'user.identity.age')}}
+{{/each}}
+{{/with}}`
     }
 }
 
@@ -114,9 +119,10 @@ ExampleData: {
  * @test #Fallthrough, { Woot: 'Yay!' } returns 'Yay!'
  * @test #Unescaped, { name: '<b>John</b>' } returns '<b>John</b>'
  * @test #ImplicitBoolean, { account: true } returns 'You have an account!'
+ * @test #RecursiveVarTest, { username: 'Bob', user: { identity: { age: 20 }  } }
  */
 export function Run(script, data) {
-    return compile(script)(data)
+    return compile(script, { recurse: false })(data)
 }
 
 
@@ -162,7 +168,7 @@ export function Run(script, data) {
  * @test #ImplicitBoolean, { account: true } resolves 'You have an account!'
  */
 export async function RunAsync(script, data) {
-    return (await compileAsync(script))(data)
+    return (await compileAsync(script, { recurse: false }))(data)
 }
 
 
@@ -192,7 +198,7 @@ export async function RunAsync(script, data) {
  * @test #AddExampleWithTraversal, { addend: 10 } returns true
  */
 export function RunMethodMatch(script, data) {
-    return interpreted(script)(data) === Run(script, data)
+    return interpreted(script, { recurse: false })(data) === Run(script, data)
 }
 
 
@@ -226,5 +232,5 @@ export function RunMethodMatch(script, data) {
  * @test #AddExampleWithTraversal, { addend: 10 } resolves true
  */
 export async function RunMethodAsyncMatch(script, data) {
-    return (await interpretedAsync(script)(data)) === (await RunAsync(script, data))
+    return (await interpretedAsync(script, { recurse: false })(data)) === (await RunAsync(script, data))
 }

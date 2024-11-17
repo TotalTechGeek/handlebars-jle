@@ -166,5 +166,9 @@
   "RunAsync(#ImplicitIterator, { people: [{ name: 'John', age: 12 }, { name: 'Jane', age: 24 }] })": {
     "value": "\n- John: 12\n- Jane: 24",
     "async": true
+  },
+  "Run(#RecursiveVarTest, { username: 'Bob', user: { identity: { age: 20 }  } })": {
+    "value": " \n    - Bob Austin 21\n    - Bob Austin 22\n    - Bob Austin 23",
+    "async": false
   }
 }

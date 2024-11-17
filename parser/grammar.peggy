@@ -5,6 +5,8 @@
     if (options.noEscape) return obj
     return { escape: obj }
   }
+
+  const varAccess = options.recurse ? 'rvar' : 'var'
 }
 
 Content = data:(Element / Text)* { return { cat: data } }
@@ -20,7 +22,7 @@ Element = startTag:sTag content:Content endTag:eTag {
       const chunks = [[{ cat: [] }]]
       let defaulted = false
       for (const item of content.cat) {
-        if (item.var === 'else' || (item.escape && item.escape.var === 'else')) {
+        if (item[varAccess] === 'else' || (item.escape && item.escape[varAccess] === 'else')) {
           chunks.push([{ cat: [] }]) 
           defaulted = true
 		  continue
@@ -60,7 +62,7 @@ selfTag = "{{" name:TagName args:Arg* "}}" {
   if (name === "@key") return wrapEscape({ var: '../index'})
   if (name === "@index") return wrapEscape({ var: '../index'})
   if (name.startsWith("this.")) return wrapEscape({ var: name.substring(5) })
-  const variableObj = { var: name.replace(/\.\.\//g, '../../').replace(/\.\.\/this\.?/g, '../') }
+  const variableObj = { [varAccess]: name.replace(/\.\.\//g, '../../').replace(/\.\.\/this\.?/g, '../') }
   if (name in (options.methods || {}) && !args.length) return { if: [variableObj, wrapEscape(variableObj), { [name]: [] }] }
   if (!args.length) return wrapEscape(variableObj); 
   return { [name]: args }
@@ -70,7 +72,7 @@ selfTag = "{{" name:TagName args:Arg* "}}" {
   if (name === "@key") return { var: '../index'}
   if (name === "@index") return { var: '../index'}
   if (name.startsWith("this.")) return { var: name.substring(5) }
-  return { var: name.replace(/\.\.\//g, '../../').replace(/\.\.\/this\.?/g, '../') }
+  return { [varAccess]: name.replace(/\.\.\//g, '../../').replace(/\.\.\/this\.?/g, '../') }
 }
 
 eTag = _ "{{/" name:TagName "}}" { return name; }
@@ -84,13 +86,13 @@ Variable = chars:[@$a-zA-Z_./-]+ {
   if (chars === "@index") return { var: '../index' }
   if (chars === '.') return { var: '' }
   if (chars === "this") return { var: '' }
-  if (chars.startsWith("this.")) return { var: chars.substring(5) }
-  return { var: chars }; 
+  if (chars.startsWith("this.")) return { [varAccess]: chars.substring(5) }
+  return { [varAccess]: chars }; 
 }
 Boolean = data:("true" / "false") { return data === "true" }
 Null = "null" { return null }
 Undefined = "undefined" { return undefined }
-HashArg = val:Variable _ "=" data:Arg { return { preserve: { [val.var]: data, [HashArg]: true } }; }
+HashArg = val:Variable _ "=" data:Arg { return { preserve: { [val[varAccess]]: data, [HashArg]: true } }; }
 Number   = chars:[0-9]+ { return parseInt(chars.join(""), 10) }
 Str = "\"" chars:[^\"]* "\"" { return chars.join(""); }
  / "\'" chars:[^"'"]* "\'" { return chars.join(""); }

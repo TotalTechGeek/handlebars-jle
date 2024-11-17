@@ -150,6 +150,8 @@ engine.methods['divide'] = engine.methods['/'];
 engine.methods['add'] = engine.methods['+'];
 engine.methods['subtract'] = engine.methods['-'];
 
+engine.methods['lookup'] = engine.methods['get'];
+
 engine.addMethod('isArray', (args) => Array.isArray(args[0]), { deterministic: true, sync: true });
 engine.addMethod('type', (args) => typeof args[0], { deterministic: true, sync: true });
 engine.addMethod('log', ([value]) => { console.log(value); return value }, { deterministic: true, sync: true });
@@ -206,8 +208,12 @@ engine.addMethod('with', {
     compile: (args, buildState) => {
         const [rArgs, options] = processArgs(args)
         const content = rArgs.pop()
-
-        buildState.methods.push(Compiler.build(content, { ...buildState, asyncDetected: false, avoidInlineAsync: true }))
+        const state = buildState.state
+        
+        const mapState = { ...buildState, asyncDetected: false, avoidInlineAsync: true, above: [null, state, ...buildState.above], state: {}, iteratorCompile: true }
+        buildState.methods.push(Compiler.build(content, mapState))
+        buildState.useContext = buildState.useContext || mapState.useContext 
+        
         const position = buildState.methods.length - 1
         const optionsLength = Object.keys(options).length
 
@@ -250,6 +256,29 @@ engine.addMethod('obj', (args) => {
 engine.methods.object = engine.methods.obj;
 engine.methods.array = engine.methods.arr;
 
+// recursive variable lookup -- takes a perf hit.
+engine.addMethod('rvar', {
+    method: (name, context, above, engine) => {
+      if (Array.isArray(name)) name = name[0]
+      name = name.replace(/\.\.\//g, '').replace(/\.\//g, '')
+      const parts = name.split('.')
+      const firstPart = parts.shift()
+      const path = parts.join('.')
+      if (name === '') return context
+      if (context && context[firstPart]) return path ? engine.methods.get.method([context[firstPart], path]) : context[firstPart]
+      if (context && context[Constants.Override] && context[Constants.Override][firstPart]) return path ? engine.methods.get.method([context[Constants.Override][firstPart], path]) : context[Constants.Override][firstPart]
+      for (let i = 0; i < above.length; i++) {
+        if (above[i] && above[i][firstPart]) return path ? engine.methods.get.method([above[i][firstPart], path], context, above, engine) : above[i][firstPart]
+        if (above[i] && above[i][Constants.Override] && above[i][Constants.Override][firstPart]) return path ? engine.methods.get.method([above[i][Constants.Override][firstPart], path], context, above, engine) : above[i][Constants.Override][firstPart]
+      }
+      return null
+  },
+  compile: (name, buildState) => {
+    buildState.useContext = true
+    return false
+  }
+}, { useContext: true, deterministic: false, sync: true })
+
 
 /**
  * Extracts hash arguments from the arguments array and simplifies it into an object,
@@ -279,7 +308,7 @@ export function processArgs (args, nullIfEmpty = false) {
 /**
  * Compiles a handlebars template string to a function that can be run with JSON data
  * @param {string} str 
- * @param {{ noEscape?: boolean }} options
+ * @param {{ noEscape?: boolean, recurse?: boolean }} options
  * @returns {(data: any) => string}
  */
 export function compile (str, options = {}) {
@@ -289,7 +318,7 @@ export function compile (str, options = {}) {
 /**
  * Compiles a handlebars template string to a function that can be run with JSON data
  * @param {string} str 
- * @param {{ noEscape?: boolean }} options
+ * @param {{ noEscape?: boolean, recurse?: boolean }} options
  * @returns {(data: any) => Promise<string>}
  */
 export async function compileAsync (str, options = {}) {
@@ -301,7 +330,7 @@ export async function compileAsync (str, options = {}) {
  * Creates a function that can be run with JSON data to get the result of running the logic.
  * Does not use eval; so it can work in environments where eval is disabled.
  * @param {*} logic 
- * @param {{ noEscape?: boolean }} options
+ * @param {{ noEscape?: boolean, recurse?: boolean }} options
  * @returns {(data: any) => string} The result of running the logic with the data
  */
 export function interpreted (logic, options = {}, logicEngine = engine.fallback) {
@@ -313,7 +342,7 @@ export function interpreted (logic, options = {}, logicEngine = engine.fallback)
  * Creates a function that can be run with JSON data to get the result of running the logic.
  * Does not use eval; so it can work in environments where eval is disabled.
  * @param {*} logic
- * @param {{ noEscape?: boolean }} options
+ * @param {{ noEscape?: boolean, recurse?: boolean }} options
  * @returns {(data: any) => Promise<string>} The result of running the logic with the data
  */
 export function interpretedAsync (logic, options = {}, logicEngine = engine) {
@@ -325,7 +354,7 @@ const preprocessRegex = /(\S.*)\s*\n\s*({{[^{}]*}})\s*\n/g;
 /**
  * Takes a handlebars template string and returns a JSON Logic object
  * @param {string} str 
- * @param {{ noEscape?: boolean }} options
+ * @param {{ noEscape?: boolean, recurse?: boolean }} options
  * @returns {*} A JSON Logic object representing the handlebars template
  */
 export function compileToJSON (str, options = {}) {
