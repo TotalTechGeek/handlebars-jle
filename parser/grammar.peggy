@@ -35,17 +35,27 @@ Element = startTag:sTag content:Content endTag:eTag {
       if (!defaulted) chunks.push('')
       return { cat: { if: [startTag.args[0], ...chunks.flat()] } };
     }
+
+    // Workaround to support implicit iteration / if. 
+    if (startTag.name === '$eachOrIf') {
+      const variable = { var: startTag.oName }
+      // If we wanted it to iterate over all Objects - we could do this:
+      // { eq: [{ and: [variable, { type: [variable] }] }, 'object'] } 
+      return { cat: { if: [{ isArray: [variable] }, { each: [variable, content] }, { if: [variable, content, ''] }] } }
+    }
+
     return { cat: { [startTag.name]: [...startTag.args, content] }};
   }
   / startTag:selfTag { return startTag; }
 
 sTag = "{{#" name:TagName args:Arg* "}}" { 
   const found = name in (options.methods || {}) || name === 'with' || name === 'if' || name === 'each'
-  // Assume implicit iteration
-  if (!found) return { oName: name, name: 'each', args: [{ var: name }, ...args] }
+  // Assume implicit iteration / if; workaround.
+  if (!found && !args.length) return { oName: name, name: '$eachOrIf', args }
   return { name, args }; 
 }
 selfTag = "{{" name:TagName args:Arg* "}}" { 
+  if (name === '.') return wrapEscape({ var: '' })
   if (name === "this") return wrapEscape({ var: '' })
   if (name === "@key") return wrapEscape({ var: '../index'})
   if (name === "@index") return wrapEscape({ var: '../index'})
@@ -55,6 +65,7 @@ selfTag = "{{" name:TagName args:Arg* "}}" {
   if (!args.length) return wrapEscape(variableObj); 
   return { [name]: args }
 } / "{{{" name:TagName "}}}" {
+  if (name === '.') return { var: '' }
   if (name === "this") return { var: '' }
   if (name === "@key") return { var: '../index'}
   if (name === "@index") return { var: '../index'}
@@ -71,6 +82,7 @@ Variable = chars:[@$a-zA-Z_./-]+ {
   chars = chars.join("").replace(/\.\.\//g, '../../').replace(/\.\.\/this\.?/g, '../')
   if (chars === "@key") return { var: '../index' }
   if (chars === "@index") return { var: '../index' }
+  if (chars === '.') return { var: '' }
   if (chars === "this") return { var: '' }
   if (chars.startsWith("this.")) return { var: chars.substring(5) }
   return { var: chars }; 

@@ -68,6 +68,7 @@ ExampleData: {
 'ImplicitIterator': `{{#people}}
 - {{name}}: {{age}}
 {{/people}}`,
+'ImplicitBoolean': `{{#account}}You have an account!{{/account}}`,
 // Calls the method if the data value is not found for Woot, because it's ambiguous
 'Fallthrough': `{{Woot}}`,
 'Unescaped': '{{{name}}}'
@@ -112,6 +113,7 @@ ExampleData: {
  * @test #Fallthrough returns 'Woot!'
  * @test #Fallthrough, { Woot: 'Yay!' } returns 'Yay!'
  * @test #Unescaped, { name: '<b>John</b>' } returns '<b>John</b>'
+ * @test #ImplicitBoolean, { account: true } returns 'You have an account!'
  */
 export function Run(script, data) {
     return compile(script)(data)
@@ -157,6 +159,7 @@ export function Run(script, data) {
  * @test #AddExampleWithTraversal, { addend: 10 }
  * @test #ImplicitIterator, { people: [{ name: 'John', age: 12 }, { name: 'Jane', age: 24 }] }
  * @test #Unescaped, { name: '<b>John</b>' } resolves '<b>John</b>'
+ * @test #ImplicitBoolean, { account: true } resolves 'You have an account!'
  */
 export async function RunAsync(script, data) {
     return (await compileAsync(script))(data)

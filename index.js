@@ -150,6 +150,8 @@ engine.methods['divide'] = engine.methods['/'];
 engine.methods['add'] = engine.methods['+'];
 engine.methods['subtract'] = engine.methods['-'];
 
+engine.addMethod('isArray', (args) => Array.isArray(args[0]), { deterministic: true, sync: true });
+engine.addMethod('type', (args) => typeof args[0], { deterministic: true, sync: true });
 engine.addMethod('log', ([value]) => { console.log(value); return value }, { deterministic: true, sync: true });
 engine.addMethod('max', (args) => Math.max(...args), { deterministic: true, sync: true });
 engine.addMethod('min', (args) => Math.min(...args), { deterministic: true, sync: true });
