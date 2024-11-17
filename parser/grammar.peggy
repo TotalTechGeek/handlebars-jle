@@ -50,9 +50,18 @@ selfTag = "{{" name:TagName args:Arg* "}}" {
   if (name === "@key") return wrapEscape({ var: '../index'})
   if (name === "@index") return wrapEscape({ var: '../index'})
   if (name.startsWith("this.")) return wrapEscape({ var: name.substring(5) })
-  if (!args.length)  return wrapEscape({ var: name.replace(/\.\.\//g, '../../').replace(/\.\.\/this\.?/g, '../') }); 
+  const variableObj = { var: name.replace(/\.\.\//g, '../../').replace(/\.\.\/this\.?/g, '../') }
+  if (name in (options.methods || {}) && !args.length) return { if: [variableObj, wrapEscape(variableObj), { [name]: [] }] }
+  if (!args.length) return wrapEscape(variableObj); 
   return { [name]: args }
+} / "{{{" name:TagName "}}}" {
+  if (name === "this") return { var: '' }
+  if (name === "@key") return { var: '../index'}
+  if (name === "@index") return { var: '../index'}
+  if (name.startsWith("this.")) return { var: name.substring(5) }
+  return { var: name.replace(/\.\.\//g, '../../').replace(/\.\.\/this\.?/g, '../') }
 }
+
 eTag = _ "{{/" name:TagName "}}" { return name; }
 TagName = test:'../'+ chars:[@$a-zA-Z_.-]* { return test.join('') + chars.join(""); }
   / chars:[@$a-zA-Z_.-]+ { return chars.join(""); }

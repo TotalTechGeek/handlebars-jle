@@ -6,6 +6,7 @@ engine.addMethod('fetch', async ([url]) => {
     return response.json()
 })
 
+engine.addMethod('Woot', () => 'Woot!', { sync: true, deterministic: true })
 
 /**
  * @pineapple_define
@@ -66,7 +67,10 @@ ExampleData: {
 {{/each}}`,
 'ImplicitIterator': `{{#people}}
 - {{name}}: {{age}}
-{{/people}}`
+{{/people}}`,
+// Calls the method if the data value is not found for Woot, because it's ambiguous
+'Fallthrough': `{{Woot}}`,
+'Unescaped': '{{{name}}}'
     }
 }
 
@@ -105,6 +109,9 @@ ExampleData: {
  * @test #SimpleJSON2 returns '{"name":"John","age":12}'
  * @test #AddExampleWithTraversal, { addend: 10 }
  * @test #ImplicitIterator, { people: [{ name: 'John', age: 12 }, { name: 'Jane', age: 24 }] }
+ * @test #Fallthrough returns 'Woot!'
+ * @test #Fallthrough, { Woot: 'Yay!' } returns 'Yay!'
+ * @test #Unescaped, { name: '<b>John</b>' } returns '<b>John</b>'
  */
 export function Run(script, data) {
     return compile(script)(data)
@@ -149,6 +156,7 @@ export function Run(script, data) {
  * @test #SimpleJSON2 resolves '{"name":"John","age":12}'
  * @test #AddExampleWithTraversal, { addend: 10 }
  * @test #ImplicitIterator, { people: [{ name: 'John', age: 12 }, { name: 'Jane', age: 24 }] }
+ * @test #Unescaped, { name: '<b>John</b>' } resolves '<b>John</b>'
  */
 export async function RunAsync(script, data) {
     return (await compileAsync(script))(data)
