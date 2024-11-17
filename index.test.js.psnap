@@ -158,5 +158,13 @@
   "RunAsync(#AddExampleWithTraversal, { addend: 10 })": {
     "value": "\n- 11\n- 12\n- 13\n- 14\n- 15",
     "async": true
+  },
+  "Run(#ImplicitIterator, { people: [{ name: 'John', age: 12 }, { name: 'Jane', age: 24 }] })": {
+    "value": "\n- John: 12\n- Jane: 24",
+    "async": false
+  },
+  "RunAsync(#ImplicitIterator, { people: [{ name: 'John', age: 12 }, { name: 'Jane', age: 24 }] })": {
+    "value": "\n- John: 12\n- Jane: 24",
+    "async": true
   }
 }

@@ -1,12 +1,17 @@
 {
   let HashArg = Symbol.for('HashArg')
+
+  function wrapEscape (obj) {
+    if (options.noEscape) return obj
+    return { escape: obj }
+  }
 }
 
 Content = data:(Element / Text)* { return { cat: data } }
 Element = startTag:sTag content:Content endTag:eTag {
-    if (startTag.name != endTag) {
+    if (startTag.name != endTag && startTag.oName != endTag) {
       throw new Error(
-        "Expected {{/" + startTag + "}} but {{/" + endTag + "}} found."
+        "Expected {{/" + startTag.name + "}} but {{/" + endTag + "}} found."
       );
     }
     if (typeof content.cat[content.cat.length -1] === 'string') content.cat.push(content.cat.pop().trimEnd())
@@ -15,7 +20,7 @@ Element = startTag:sTag content:Content endTag:eTag {
       const chunks = [[{ cat: [] }]]
       let defaulted = false
       for (const item of content.cat) {
-        if (item.var === 'else') {
+        if (item.var === 'else' || (item.escape && item.escape.var === 'else')) {
           chunks.push([{ cat: [] }]) 
           defaulted = true
 		  continue
@@ -34,13 +39,18 @@ Element = startTag:sTag content:Content endTag:eTag {
   }
   / startTag:selfTag { return startTag; }
 
-sTag = "{{#" name:TagName args:Arg* "}}" { return { name, args }; }
+sTag = "{{#" name:TagName args:Arg* "}}" { 
+  const found = name in (options.methods || {}) || name === 'with' || name === 'if' || name === 'each'
+  // Assume implicit iteration
+  if (!found) return { oName: name, name: 'each', args: [{ var: name }, ...args] }
+  return { name, args }; 
+}
 selfTag = "{{" name:TagName args:Arg* "}}" { 
-  if (name === "this") return { var: '' }
-  if (name === "@key") return { var: '../index'}
-  if (name === "@index") return { var: '../index'}
-  if (name.startsWith("this.")) return { var: name.substring(5) }
-  if (!args.length)  return { var: name.replace(/\.\.\//g, '../../').replace(/\.\.\/this\.?/g, '../') }; 
+  if (name === "this") return wrapEscape({ var: '' })
+  if (name === "@key") return wrapEscape({ var: '../index'})
+  if (name === "@index") return wrapEscape({ var: '../index'})
+  if (name.startsWith("this.")) return wrapEscape({ var: name.substring(5) })
+  if (!args.length)  return wrapEscape({ var: name.replace(/\.\.\//g, '../../').replace(/\.\.\/this\.?/g, '../') }); 
   return { [name]: args }
 }
 eTag = _ "{{/" name:TagName "}}" { return name; }

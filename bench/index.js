@@ -29,12 +29,12 @@ function runBench (name, script, data, iter = 1e6) {
     const elasticEnd = performance.now()
 
     const jleStart = performance.now()
-    const jle = compile(script)
+    const jle = compile(script, { noEscape: true })
     for (let i = 0; i < iter; i++) jle(data(i))
     const jleEnd = performance.now()
 
     const jleInterpStart = performance.now()
-    const jleInterp = interpreted(script)
+    const jleInterp = interpreted(script, { noEscape: true })
     for (let i = 0; i < iter; i++) jleInterp(data(i))
     const jleInterpEnd = performance.now()
 

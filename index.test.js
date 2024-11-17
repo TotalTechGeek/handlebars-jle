@@ -63,7 +63,10 @@ ExampleData: {
 'SimpleJSON2': `{{json (obj 'name' 'John' 'age' 12)}}`,
 'AddExampleWithTraversal': `{{#each (arr 1 2 3 4 5)}}
 - {{add this ../addend}}
-{{/each}}`
+{{/each}}`,
+'ImplicitIterator': `{{#people}}
+- {{name}}: {{age}}
+{{/people}}`
     }
 }
 
@@ -101,6 +104,7 @@ ExampleData: {
  * @test #SimpleJSON returns '{"name":"John","age":12}'
  * @test #SimpleJSON2 returns '{"name":"John","age":12}'
  * @test #AddExampleWithTraversal, { addend: 10 }
+ * @test #ImplicitIterator, { people: [{ name: 'John', age: 12 }, { name: 'Jane', age: 24 }] }
  */
 export function Run(script, data) {
     return compile(script)(data)
@@ -144,6 +148,7 @@ export function Run(script, data) {
  * @test #SimpleJSON resolves '{"name":"John","age":12}'
  * @test #SimpleJSON2 resolves '{"name":"John","age":12}'
  * @test #AddExampleWithTraversal, { addend: 10 }
+ * @test #ImplicitIterator, { people: [{ name: 'John', age: 12 }, { name: 'Jane', age: 24 }] }
  */
 export async function RunAsync(script, data) {
     return (await compileAsync(script))(data)

@@ -5,6 +5,56 @@ export const engine = new AsyncLogicEngine();
 engine.fallback.methods = engine.methods
 const HashArg = Symbol.for('HashArg');
 
+
+// Inspired by escape-html
+// Also, this can be easily overridden for different escaping requirements
+engine.addMethod('escape', (str) => {
+  if (str === null) return ''
+  if (typeof str !== 'string') return str;
+
+  let index = 0
+  let shouldEscape = false
+  for (; index < str.length; index++) {
+    const char = str.charCodeAt(index)
+    if (char === 34 || char === 38 || char === 39 || char === 60 || char === 62) {
+        shouldEscape = true
+        break 
+    }
+  }
+  if (!shouldEscape) return str
+
+  let escape
+  let html = ''
+  let lastIndex = 0
+
+  for (; index < str.length; index++) {
+    switch (str.charCodeAt(index)) {
+      case 34: // "
+        escape = '&quot;'
+        break
+      case 38: // &
+        escape = '&amp;'
+        break
+      case 39: // '
+        escape = '&#39;'
+        break
+      case 60: // <
+        escape = '&lt;'
+        break
+      case 62: // >
+        escape = '&gt;'
+        break
+      default:
+        continue
+    }
+    if (lastIndex !== index) html += str.substring(lastIndex, index)
+    lastIndex = index + 1
+    html += escape
+  }
+
+  return lastIndex !== index ? html + str.substring(lastIndex, index) : html
+}, { deterministic: true, sync: true });
+
 function each (iterable, func) {
     let res = ''
     if (Array.isArray(iterable)) {
@@ -227,19 +277,21 @@ export function processArgs (args, nullIfEmpty = false) {
 /**
  * Compiles a handlebars template string to a function that can be run with JSON data
  * @param {string} str 
+ * @param {{ noEscape?: boolean }} options
  * @returns {(data: any) => string}
  */
-export function compile (str) {
-    return engine.fallback.build(compileToJSON(str))
+export function compile (str, options = {}) {
+    return engine.fallback.build(compileToJSON(str, { ...options, methods: engine.methods }))
 }
 
 /**
  * Compiles a handlebars template string to a function that can be run with JSON data
  * @param {string} str 
+ * @param {{ noEscape?: boolean }} options
  * @returns {(data: any) => Promise<string>}
  */
-export async function compileAsync (str) {
-    return engine.build(compileToJSON(str))
+export async function compileAsync (str, options = {}) {
+    return engine.build(compileToJSON(str, { ...options, methods: engine.methods }))
 }
 
 
@@ -247,10 +299,11 @@ export async function compileAsync (str) {
  * Creates a function that can be run with JSON data to get the result of running the logic.
  * Does not use eval; so it can work in environments where eval is disabled.
  * @param {*} logic 
+ * @param {{ noEscape?: boolean }} options
  * @returns {(data: any) => string} The result of running the logic with the data
  */
-export function interpreted (logic, logicEngine = engine.fallback) {
-    const parsed = compileToJSON(logic)
+export function interpreted (logic, options = {}, logicEngine = engine.fallback) {
+    const parsed = compileToJSON(logic, { ...options, methods: logicEngine.methods })
     return (data) => logicEngine.run(parsed, data)
 }
 
@@ -258,10 +311,11 @@ export function interpreted (logic, logicEngine = engine.fallback) {
  * Creates a function that can be run with JSON data to get the result of running the logic.
  * Does not use eval; so it can work in environments where eval is disabled.
  * @param {*} logic
+ * @param {{ noEscape?: boolean }} options
  * @returns {(data: any) => Promise<string>} The result of running the logic with the data
  */
-export function interpretedAsync (logic, logicEngine = engine) {
-    const parsed = compileToJSON(logic)
+export function interpretedAsync (logic, options = {}, logicEngine = engine) {
+    const parsed = compileToJSON(logic, { ...options, methods: logicEngine.methods })
     return data => logicEngine.run(parsed, data)
 }
 
@@ -269,8 +323,9 @@ const preprocessRegex = /(\S.*)\s*\n\s*({{[^{}]*}})\s*\n/g;
 /**
  * Takes a handlebars template string and returns a JSON Logic object
  * @param {string} str 
+ * @param {{ noEscape?: boolean }} options
  * @returns {*} A JSON Logic object representing the handlebars template
  */
-export function compileToJSON (str) {
-    return parse(str.replace(preprocessRegex, '$1 $2\n'))
+export function compileToJSON (str, options = {}) {
+    return parse(str.replace(preprocessRegex, '$1 $2\n'), options)
 }

@@ -11,7 +11,7 @@ I will admit upfront that there are some differences in this implementation comp
 Some of the obvious differences include:
 
 - Asynchronous Execution is fully supported; this means you can add async helpers natively.
-- Iteration is strictly done via block expressions like `#each`, implicit iteration is not supported. (Use `#each kids` instead of `#kids`)
+- ~~Iteration is strictly done via block expressions like `#each`, implicit iteration is not supported. (Use `#each kids` instead of `#kids`)~~
 - There are significantly more built-in helpers, which I may remove or document as I publish this module.
 - The whitespace control is currently not supported in the grammar. (I may add it later) Ex. `{{~foo}}` is not supported.
 - Partials are implemented via a helper rather than dedicated syntax.
