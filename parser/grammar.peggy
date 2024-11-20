@@ -17,8 +17,11 @@ Element = startTag:sTag content:Content endTag:eTag {
       );
     }
     if (typeof content.cat[content.cat.length -1] === 'string') content.cat.push(content.cat.pop().trimEnd())
-    // Patch for #if
-    if (startTag.name === 'if') {
+    // Patch for #if and #unless
+    if (startTag.name === 'if' || startTag.name === 'unless') {
+      // Admittedly, this unless hack is a little not cool, maybe I should add something into JSON Logic, like macros to make it easier
+      // to macro-ify things like this.
+      if (startTag.name === 'unless') startTag.args[0] = { not: startTag.args[0] }
       const chunks = [[{ cat: [] }]]
       let defaulted = false
       for (const item of content.cat) {
@@ -77,6 +80,7 @@ selfTag = "{{" name:TagName args:Arg* "}}" {
 
 eTag = _ "{{/" name:TagName "}}" { return name; }
 TagName = test:'../'+ chars:[@$a-zA-Z_.-]* { return test.join('') + chars.join(""); }
+  / './' chars:[@$a-zA-Z_.-]+ { return chars.join(""); }
   / chars:[@$a-zA-Z_.-]+ { return chars.join(""); }
 Text = chars:([^{}] / "{" !"{" / "}" !"}")+ { return chars.flat().join(""); }
 Arg = _ data:(Func / Boolean / Null / Undefined / HashArg / Variable / Number / Str) _ { return data }

@@ -170,5 +170,53 @@
   "Run(#RecursiveVarTest, { username: 'Bob', user: { identity: { age: 20 }  } })": {
     "value": " \n    - Bob Austin 21\n    - Bob Austin 22\n    - Bob Austin 23",
     "async": false
+  },
+  "Run(#SimpleEach, { iterator: Set(['a', 'b', 'c']) })": {
+    "value": "\n- a\n- b\n- c",
+    "async": false
+  },
+  "Run(#SimpleEach, { iterator: fib() })": {
+    "value": "\n- 1\n- 1\n- 2\n- 3\n- 5\n- 8\n- 13",
+    "async": false
+  },
+  "RunAsync(#SimpleEach, { iterator: Set(['a', 'b', 'c']) })": {
+    "value": "\n- a\n- b\n- c",
+    "async": true
+  },
+  "RunAsync(#SimpleEach, { iterator: fib() })": {
+    "value": "\n- 1\n- 1\n- 2\n- 3\n- 5\n- 8\n- 13",
+    "async": true
+  },
+  "Run(#EachWithIndex, { iterator: Set(['a', 'b', 'c']) })": {
+    "value": "\n- 0: a\n- 1: b\n- 2: c",
+    "async": false
+  },
+  "Run(#EachWithIndex, { iterator: fib() })": {
+    "value": "\n- 0: 1\n- 1: 1\n- 2: 2\n- 3: 3\n- 4: 5\n- 5: 8\n- 6: 13",
+    "async": false
+  },
+  "Run(#EachWithIndex, { iterator: Map({ John: 12, Susan: 24 }) })": {
+    "value": "\n- John: 12\n- Susan: 24",
+    "async": false
+  },
+  "RunAsync(#EachWithIndex, { iterator: Set(['a', 'b', 'c']) })": {
+    "value": "\n- 0: a\n- 1: b\n- 2: c",
+    "async": true
+  },
+  "RunAsync(#EachWithIndex, { iterator: fib() })": {
+    "value": "\n- 0: 1\n- 1: 1\n- 2: 2\n- 3: 3\n- 4: 5\n- 5: 8\n- 6: 13",
+    "async": true
+  },
+  "RunAsync(#EachWithIndex, { iterator: Map({ John: 12, Susan: 24 }) })": {
+    "value": "\n- John: 12\n- Susan: 24",
+    "async": true
+  },
+  "Run(#SimpleUnless, { account: true })": {
+    "value": "You have an account!",
+    "async": false
+  },
+  "Run(#SimpleUnless, { account: false })": {
+    "value": "You have no account!",
+    "async": false
   }
 }

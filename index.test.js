@@ -9,6 +9,38 @@ engine.addMethod('fetch', async ([url]) => {
 engine.addMethod('Woot', () => 'Woot!', { sync: true, deterministic: true })
 
 /**
+ * @pineapple_import Set 
+ */
+export function createSet (...arr) {
+    return new Set(arr)
+}
+
+/**
+ * @pineapple_import Map
+ */
+export function createMap (obj) {
+    return new Map(Object.entries(obj))
+}
+
+
+/**
+ * @pineapple_import fib
+ */
+export function fibGenerator () {
+    function* fib () {
+        yield 1
+        yield 1
+        yield 2
+        yield 3
+        yield 5
+        yield 8
+        yield 13
+    }
+    return fib()
+}
+
+
+/**
  * @pineapple_define
  */
 export function Cases () {
@@ -21,6 +53,7 @@ export function Cases () {
 {{/each}}`,
 'Person': `{{name}} is {{age}} years old.`,
 'SimpleIf': `{{#if account}}You have an account!{{else}}You have no account!{{/if}}`,
+'SimpleUnless': `{{#unless account}}You have no account!{{else}}You have an account!{{/unless}}`,
 'NestedIf': `{{#if account}}You have an account!{{else if (gte age 18)}}You are an adult, but you have no account!{{else}}You have no account!{{/if}}`,
 'SimpleWith': `{{#with name='Bob'}}Hi {{name}}!{{/with}}`,
 'SimpleWithVar': `{{#with name=(default username email)}}Hi {{name}}!{{/with}}`,
@@ -76,24 +109,39 @@ ExampleData: {
 {{#each (arr 1 2 3)}}
     - {{rvar 'username'}} {{rvar 'city'}} {{add . (rvar 'user.identity.age')}}
 {{/each}}
-{{/with}}`
+{{/with}}`,
+'HelloDot': `Hello {{.}}!`,
+'HelloDotSlashName': `Hello {{./name}}!`,
+'HelloThisName': `Hello {{this.name}}!`,
+'HelloName': `Hello {{name}}!`,
     }
 }
 
 
 /**
  * @param {string} script 
+ * @test #HelloDot, 'John' returns 'Hello John!'
+ * @test #HelloDotSlashName, { name: 'John' } returns 'Hello John!'
+ * @test #HelloThisName, { name: 'John' } returns 'Hello John!'
+ * @test #HelloName, { name: 'John' } returns 'Hello John!'
  * @test #SimpleEach, { iterator: [1, 2, 3] }
  * @test #SimpleEach, { iterator: ['a', 'b', 'c'] }
  * @test #SimpleEach, { iterator: ['a', 'b', 'c', 'd'] }
  * @test #SimpleEach, { iterator: { a: 1, b: 2, c: 3 } }
+ * @test #SimpleEach, { iterator: Set(['a', 'b', 'c']) }
+ * @test #SimpleEach, { iterator: fib() }
  * @test #EachWithIndex, { iterator: [1, 2, 3] }
  * @test #EachWithIndex, { iterator: ['a', 'b', 'c'] }
  * @test #EachWithIndex, { iterator: { a: 1, b: 2, c: 3 } }
+ * @test #EachWithIndex, { iterator: Set(['a', 'b', 'c']) }
+ * @test #EachWithIndex, { iterator: fib() }
+ * @test #EachWithIndex, { iterator: Map({ John: 12, Susan: 24 }) }
  * @test #Person, { name: 'John', age: 12 }
  * @test #Person, { name: 'Jane', age: 24 }
  * @test #SimpleIf, { account: true }
  * @test #SimpleIf, { account: false }
+ * @test #SimpleUnless, { account: true }
+ * @test #SimpleUnless, { account: false }
  * @test #NestedIf, { account: true, age: 12 }
  * @test #NestedIf, { account: false, age: 12 }
  * @test #NestedIf, { account: true, age: 18 }
@@ -132,9 +180,14 @@ export function Run(script, data) {
  * @test #SimpleEach, { iterator: ['a', 'b', 'c'] }
  * @test #SimpleEach, { iterator: ['a', 'b', 'c', 'd'] }
  * @test #SimpleEach, { iterator: { a: 1, b: 2, c: 3 } }
+ * @test #SimpleEach, { iterator: Set(['a', 'b', 'c']) }
+ * @test #SimpleEach, { iterator: fib() }
  * @test #EachWithIndex, { iterator: [1, 2, 3] }
  * @test #EachWithIndex, { iterator: ['a', 'b', 'c'] }
  * @test #EachWithIndex, { iterator: { a: 1, b: 2, c: 3 } }
+ * @test #EachWithIndex, { iterator: Set(['a', 'b', 'c']) }
+ * @test #EachWithIndex, { iterator: fib() }
+ * @test #EachWithIndex, { iterator: Map({ John: 12, Susan: 24 }) }
  * @test #Person, { name: 'John', age: 12 }
  * @test #Person, { name: 'Jane', age: 24 }
  * @test #SimpleIf, { account: true }
@@ -178,9 +231,12 @@ export async function RunAsync(script, data) {
  * @test #SimpleEach, { iterator: ['a', 'b', 'c'] } returns true
  * @test #SimpleEach, { iterator: ['a', 'b', 'c', 'd'] } returns true
  * @test #SimpleEach, { iterator: { a: 1, b: 2, c: 3 } } returns true
+ * @test #SimpleEach, { iterator: Set(['a', 'b', 'c']) } returns true
  * @test #EachWithIndex, { iterator: [1, 2, 3] } returns true
  * @test #EachWithIndex, { iterator: ['a', 'b', 'c'] } returns true
  * @test #EachWithIndex, { iterator: { a: 1, b: 2, c: 3 } } returns true
+ * @test #EachWithIndex, { iterator: Set(['a', 'b', 'c']) } returns true
+ * @test #EachWithIndex, { iterator: Map({ John: 12, Susan: 24 }) } returns true
  * @test #Person, { name: 'John', age: 12 } returns true
  * @test #Person, { name: 'Jane', age: 24 } returns true
  * @test #SimpleIf, { account: true } returns true
@@ -208,9 +264,12 @@ export function RunMethodMatch(script, data) {
  * @test #SimpleEach, { iterator: ['a', 'b', 'c'] } resolves true
  * @test #SimpleEach, { iterator: ['a', 'b', 'c', 'd'] } resolves true
  * @test #SimpleEach, { iterator: { a: 1, b: 2, c: 3 } } resolves true
+ * @test #SimpleEach, { iterator: Set(['a', 'b', 'c']) } resolves true
  * @test #EachWithIndex, { iterator: [1, 2, 3] } resolves true
  * @test #EachWithIndex, { iterator: ['a', 'b', 'c'] } resolves true
  * @test #EachWithIndex, { iterator: { a: 1, b: 2, c: 3 } } resolves true
+ * @test #EachWithIndex, { iterator: Set(['a', 'b', 'c']) } resolves true
+ * @test #EachWithIndex, { iterator: Map({ John: 12, Susan: 24 }) } resolves true
  * @test #Person, { name: 'John', age: 12 } resolves true
  * @test #Person, { name: 'Jane', age: 24 } resolves true
  * @test #SimpleIf, { account: true } resolves true

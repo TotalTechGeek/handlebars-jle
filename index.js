@@ -59,7 +59,14 @@ function each (iterable, func) {
     let res = ''
     if (Array.isArray(iterable)) {
       for (let i = 0; i < iterable.length; i++) res += func(iterable[i], i)
-    } else if (typeof iterable === 'object') {
+    } 
+    // check if iterable is iterable
+    else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
+      let i = 0
+      if (iterable instanceof Map) for (const [key, value] of iterable) res += func(value, key)
+      else for (const item of iterable) res += func(item, i++)
+    }
+    else if (typeof iterable === 'object') {
       for (const key in iterable) res += func(iterable[key], key)
     }
     return res
@@ -69,7 +76,13 @@ function each (iterable, func) {
     let res = ''
     if (Array.isArray(iterable)) {
       for (let i = 0; i < iterable.length; i++) res += await func(iterable[i], i)
-    } else if (typeof iterable === 'object') {
+    } else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
+      // Todo: Add Async Iterator Support
+      let i = 0
+      if (iterable instanceof Map) for (const [key, value] of iterable) res += await func(value, key)
+      else for (const item of iterable) res += await func(item, i++)
+    }
+    else if (typeof iterable === 'object') {
       for (const key in iterable) res += await func(iterable[key], key)
     }
     return res
@@ -84,6 +97,10 @@ function each (iterable, func) {
         for (let i = 0; i < iterable.length; i++) {
           res += (engine.fallback || engine).run(data[1], iterable[i], { above: [{ index: i }, context, ...above] })
         }
+      } else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
+        let i = 0
+        if (iterable instanceof Map) for (const [key, value] of iterable) res += (engine.fallback || engine).run(data[1], value, { above: [{ index: key }, context, ...above] })
+        else for (const item of iterable) res += (engine.fallback || engine).run(data[1], item, { above: [{ index: i++ }, context, ...above] })
       } else if (typeof iterable === 'object') {
         for (const key in iterable) {
           res += (engine.fallback || engine).run(data[1], iterable[key], { above: [{ index: key }, context, ...above] })
@@ -99,6 +116,11 @@ function each (iterable, func) {
         for (let i = 0; i < iterable.length; i++) {
           res += await engine.run(data[1], iterable[i], { above: [{ index: i }, context, ...above] })
         }
+      } else if (iterable && typeof iterable[Symbol.iterator] === 'function') { 
+        // Todo: Add Async Iterator Support
+        let i = 0
+        if (iterable instanceof Map) for (const [key, value] of iterable) res += await engine.run(data[1], value, { above: [{ index: key }, context, ...above] })
+        else for (const item of iterable) res += await engine.run(data[1], item, { above: [{ index: i++ }, context, ...above] })
       } else if (typeof iterable === 'object') {
         for (const key in iterable) {
           res += await engine.run(data[1], iterable[key], { above: [{ index: key }, context, ...above] })
@@ -139,7 +161,6 @@ function each (iterable, func) {
   })
 
 engine.methods['lt'] = engine.methods['<'];
-engine.methods['lte'] = engine.methods['<='];
 engine.methods['gt'] = engine.methods['>'];
 engine.methods['gte'] = engine.methods['>='];
 engine.methods['eq'] = engine.methods['=='];
