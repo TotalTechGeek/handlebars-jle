@@ -139,7 +139,6 @@ function each (iterable, func) {
         extraArguments: 'index, above'
       }
       mapper = Compiler.build(mapper, mapState)
-      buildState.useContext = buildState.useContext || mapState.useContext
       buildState.methods.push(mapper)
       buildState.methods.each = each
       buildState.methods.eachAsync = eachAsync
@@ -286,12 +285,8 @@ engine.addMethod('rvar', {
         if (above[i] && above[i][firstPart]) return path ? engine.methods.get.method([above[i][firstPart], path], context, above, engine) : above[i][firstPart]
       }
       return null
-  },
-  compile: (name, buildState) => {
-    buildState.useContext = true
-    return false
   }
-}, { useContext: true, deterministic: false, sync: true })
+}, { deterministic: false, sync: true })
 
 
 /**
