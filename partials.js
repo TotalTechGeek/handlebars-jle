@@ -9,7 +9,7 @@ engine.addMethod('partial', {
         if (options) for (const key in options) options[key] = (engine.fallback || engine).run(options[key], context, { above })
         if (options?.['']) return templates[path](options[''])
         else if (options) return templates[path](options)        
-        return templates[path](context?.[Constants.Override] ?? context)
+        return templates[path](context)
     },
     asyncMethod: async (args, context) => {
         const path = args[0]
@@ -18,7 +18,7 @@ engine.addMethod('partial', {
         if (options) for (const key in options) options[key] = await engine.run(options[key], context, { above })
         if (options?.['']) return templates[path](options[''])
         else if (options) return templates[path](options)
-        return templates[path](context?.[Constants.Override] ?? context)
+        return templates[path](context)
     },
     useContext: true,
     traverse: true,

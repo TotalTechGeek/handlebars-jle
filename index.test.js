@@ -4,7 +4,7 @@ import { compile, compileAsync, interpreted, interpretedAsync, engine } from "./
 engine.addMethod('fetch', async ([url]) => {
     const response = await fetch(url)
     return response.json()
-})
+}, { deterministic: true })
 
 engine.addMethod('Woot', () => 'Woot!', { sync: true, deterministic: true })
 

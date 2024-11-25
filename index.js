@@ -129,15 +129,14 @@ function each (iterable, func) {
       return res
     },
     compile: (data, buildState) => {
-      const { above = [], state, async } = buildState
+      const { async } = buildState
       let [selector, mapper] = data
       selector = Compiler.buildString(selector, buildState)
       const mapState = {
         ...buildState,
-        state: {},
-        above: [{ item: selector }, state, ...above],
         avoidInlineAsync: true,
-        iteratorCompile: true
+        iteratorCompile: true,
+        extraArguments: 'index, above'
       }
       mapper = Compiler.build(mapper, mapState)
       buildState.useContext = buildState.useContext || mapState.useContext
@@ -145,16 +144,16 @@ function each (iterable, func) {
       buildState.methods.each = each
       buildState.methods.eachAsync = eachAsync
       if (async) {
-        if (!Constants.isSync(mapper) || selector.includes('await')) {
+        if (!Constants.isSync(mapper)) {
           buildState.detectAsync = true
-          return `await methods.eachAsync(${selector} || [], methods[${
+          return `await methods.eachAsync(${selector} || [], (i,x) => methods[${
             buildState.methods.length - 1
-          }])`
+          }](i, x, [null, context, ...above]))`
         }
       }
-      return `methods.each(${selector} || [], methods[${
+      return `methods.each(${selector} || [], (i,x) => methods[${
         buildState.methods.length - 1
-      }])`
+      }](i, x, [null, context, ...above]))`
     },
     traverse: false,
     deterministic: engine.methods.map.deterministic
@@ -229,12 +228,8 @@ engine.addMethod('with', {
     compile: (args, buildState) => {
         const [rArgs, options] = processArgs(args)
         const content = rArgs.pop()
-        const state = buildState.state
         
-        const mapState = { ...buildState, asyncDetected: false, avoidInlineAsync: true, above: [null, state, ...buildState.above], state: {}, iteratorCompile: true }
-        buildState.methods.push(Compiler.build(content, mapState))
-        buildState.useContext = buildState.useContext || mapState.useContext 
-        
+        buildState.methods.push(Compiler.build(content, { ...buildState, asyncDetected: false, avoidInlineAsync: true, extraArguments: 'above' }))
         const position = buildState.methods.length - 1
         const optionsLength = Object.keys(options).length
 
@@ -244,10 +239,10 @@ engine.addMethod('with', {
 
         const asyncPrefix = !Constants.isSync(buildState.methods[position]) ? 'await ' : ''
 
-        if (optionsLength && rArgs.length) return asyncPrefix + `methods[${position}]({ ...(${Compiler.buildString(rArgs[0], buildState)}), ...${objectBuild} })`
-        if (optionsLength) return asyncPrefix + `methods[${position}](${objectBuild})`
-        if (!rArgs.length) return asyncPrefix + `methods[${position}]()`
-        return asyncPrefix + `methods[${position}](${Compiler.buildString(rArgs[0], buildState)})`
+        if (optionsLength && rArgs.length) return asyncPrefix + `methods[${position}]({ ...(${Compiler.buildString(rArgs[0], buildState)}), ...${objectBuild} }, [null, context, ...above])`
+        if (optionsLength) return asyncPrefix + `methods[${position}](${objectBuild}, [null, context, ...above])`
+        if (!rArgs.length) return asyncPrefix + `methods[${position}](null, [null, context, ...above])`
+        return asyncPrefix + `methods[${position}](${Compiler.buildString(rArgs[0], buildState)}, [null, context, ...above])`
     },
     traverse: false,
     deterministic: (data, buildState) => {
@@ -287,10 +282,8 @@ engine.addMethod('rvar', {
       const path = parts.join('.')
       if (name === '') return context
       if (context && context[firstPart]) return path ? engine.methods.get.method([context[firstPart], path]) : context[firstPart]
-      if (context && context[Constants.Override] && context[Constants.Override][firstPart]) return path ? engine.methods.get.method([context[Constants.Override][firstPart], path]) : context[Constants.Override][firstPart]
       for (let i = 0; i < above.length; i++) {
         if (above[i] && above[i][firstPart]) return path ? engine.methods.get.method([above[i][firstPart], path], context, above, engine) : above[i][firstPart]
-        if (above[i] && above[i][Constants.Override] && above[i][Constants.Override][firstPart]) return path ? engine.methods.get.method([above[i][Constants.Override][firstPart], path], context, above, engine) : above[i][Constants.Override][firstPart]
       }
       return null
   },
