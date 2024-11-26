@@ -90,20 +90,20 @@ function each (iterable, func) {
   
   engine.addMethod('each', {
     method: (data, context, above, engine) => {
-      const iterable = (engine.fallback || engine).run(data[0], context, above, engine)
+      const iterable = engine.run(data[0], context, above, engine)
       if (!iterable) return ''
       let res = ''
       if (Array.isArray(iterable)) {
         for (let i = 0; i < iterable.length; i++) {
-          res += (engine.fallback || engine).run(data[1], iterable[i], { above: [{ index: i }, context, ...above] })
+          res += engine.run(data[1], iterable[i], { above: [{ index: i }, context, above] })
         }
       } else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
         let i = 0
-        if (iterable instanceof Map) for (const [key, value] of iterable) res += (engine.fallback || engine).run(data[1], value, { above: [{ index: key }, context, ...above] })
-        else for (const item of iterable) res += (engine.fallback || engine).run(data[1], item, { above: [{ index: i++ }, context, ...above] })
+        if (iterable instanceof Map) for (const [key, value] of iterable) res += engine.run(data[1], value, { above: [{ index: key }, context, above] })
+        else for (const item of iterable) res += engine.run(data[1], item, { above: [{ index: i++ }, context, above] })
       } else if (typeof iterable === 'object') {
         for (const key in iterable) {
-          res += (engine.fallback || engine).run(data[1], iterable[key], { above: [{ index: key }, context, ...above] })
+          res += engine.run(data[1], iterable[key], { above: [{ index: key }, context, above] })
         }
       }
       return res
@@ -114,16 +114,16 @@ function each (iterable, func) {
       let res = ''
       if (Array.isArray(iterable)) {
         for (let i = 0; i < iterable.length; i++) {
-          res += await engine.run(data[1], iterable[i], { above: [{ index: i }, context, ...above] })
+          res += await engine.run(data[1], iterable[i], { above: [{ index: i }, context, above] })
         }
       } else if (iterable && typeof iterable[Symbol.iterator] === 'function') { 
         // Todo: Add Async Iterator Support
         let i = 0
-        if (iterable instanceof Map) for (const [key, value] of iterable) res += await engine.run(data[1], value, { above: [{ index: key }, context, ...above] })
-        else for (const item of iterable) res += await engine.run(data[1], item, { above: [{ index: i++ }, context, ...above] })
+        if (iterable instanceof Map) for (const [key, value] of iterable) res += await engine.run(data[1], value, { above: [{ index: key }, context, above] })
+        else for (const item of iterable) res += await engine.run(data[1], item, { above: [{ index: i++ }, context, above] })
       } else if (typeof iterable === 'object') {
         for (const key in iterable) {
-          res += await engine.run(data[1], iterable[key], { above: [{ index: key }, context, ...above] })
+          res += await engine.run(data[1], iterable[key], { above: [{ index: key }, context, above] })
         }
       }
       return res
@@ -147,12 +147,12 @@ function each (iterable, func) {
           buildState.detectAsync = true
           return `await methods.eachAsync(${selector} || [], (i,x) => methods[${
             buildState.methods.length - 1
-          }](i, x, [null, context, ...above]))`
+          }](i, x, [null, context, above]))`
         }
       }
       return `methods.each(${selector} || [], (i,x) => methods[${
         buildState.methods.length - 1
-      }](i, x, [null, context, ...above]))`
+      }](i, x, [null, context, above]))`
     },
     traverse: false,
     deterministic: engine.methods.map.deterministic
@@ -201,14 +201,14 @@ engine.addMethod('with', {
         const content = rArgs.pop()
 
         const optionsLength = Object.keys(options).length
-        for (const key in options) options[key] = (engine.fallback || engine).run(options[key], context, { above })
-        if (rArgs.length) rArgs[0] = (engine.fallback || engine).run(rArgs[0], context, { above })
+        for (const key in options) options[key] = engine.run(options[key], context, { above })
+        if (rArgs.length) rArgs[0] = engine.run(rArgs[0], context, { above })
 
-        if (optionsLength && rArgs.length) return (engine.fallback || engine).run(content, { ...options, ...rArgs[0] }, { above: [null, context, ...above] })
-        if (optionsLength) return (engine.fallback || engine).run(content, options, { above: [null, context, ...above] })
-        if (!rArgs.length) return (engine.fallback || engine).run(content, {}, { above: [null, context, ...above] })
+        if (optionsLength && rArgs.length) return engine.run(content, { ...options, ...rArgs[0] }, { above: [null, context, above] })
+        if (optionsLength) return engine.run(content, options, { above: [null, context, above] })
+        if (!rArgs.length) return engine.run(content, {}, { above: [null, context, above] })
 
-        return (engine.fallback || engine).run(content, rArgs[0], { above })
+        return engine.run(content, rArgs[0], { above })
     },
     asyncMethod: async (args, context, above, engine) => {
         const [rArgs, options] = processArgs(args)
@@ -218,9 +218,9 @@ engine.addMethod('with', {
         for (const key in options) options[key] = await engine.run(options[key], context, { above })
         if (rArgs.length) rArgs[0] = await engine.run(rArgs[0], context, { above })
 
-        if (optionsLength && rArgs.length) return engine.run(content, { ...options, ...rArgs[0] }, { above: [null, context, ...above] })
-        if (optionsLength) return engine.run(content, options, { above: [null, context, ...above] })
-        if (!rArgs.length) return engine.run(content, {}, { above: [null, context, ...above] })
+        if (optionsLength && rArgs.length) return engine.run(content, { ...options, ...rArgs[0] }, { above: [null, context, above] })
+        if (optionsLength) return engine.run(content, options, { above: [null, context, above] })
+        if (!rArgs.length) return engine.run(content, {}, { above: [null, context, above] })
 
         return engine.run(content, rArgs[0], { above })
     },
@@ -238,10 +238,10 @@ engine.addMethod('with', {
 
         const asyncPrefix = !Constants.isSync(buildState.methods[position]) ? 'await ' : ''
 
-        if (optionsLength && rArgs.length) return asyncPrefix + `methods[${position}]({ ...(${Compiler.buildString(rArgs[0], buildState)}), ...${objectBuild} }, [null, context, ...above])`
-        if (optionsLength) return asyncPrefix + `methods[${position}](${objectBuild}, [null, context, ...above])`
-        if (!rArgs.length) return asyncPrefix + `methods[${position}](null, [null, context, ...above])`
-        return asyncPrefix + `methods[${position}](${Compiler.buildString(rArgs[0], buildState)}, [null, context, ...above])`
+        if (optionsLength && rArgs.length) return asyncPrefix + `methods[${position}]({ ...(${Compiler.buildString(rArgs[0], buildState)}), ...${objectBuild} }, [null, context, above])`
+        if (optionsLength) return asyncPrefix + `methods[${position}](${objectBuild}, [null, context, above])`
+        if (!rArgs.length) return asyncPrefix + `methods[${position}](null, [null, context, above])`
+        return asyncPrefix + `methods[${position}](${Compiler.buildString(rArgs[0], buildState)}, [null, context, above])`
     },
     traverse: false,
     deterministic: (data, buildState) => {
