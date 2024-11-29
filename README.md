@@ -115,7 +115,7 @@ template({ age: 5 }); // 6
 template({ age: 10 }); // 11
 ```
 
-If your method is synchronous and deterministic (same input always produces the same output, and it will never return a promise), you should specify that in the options. This will allow the engine to optimize the method.
+If your method is synchronous and deterministic (same input always produces the same output, and it will never return a promise), you should specify that in the options. This will allow the engine to optimize the method; and if synchronous, allow it to be used by `compile`
 
 Here is a more interesting example, using async support:
 
@@ -149,6 +149,39 @@ Would produce:
 @Delphine - Glenna Reichert
 @Moriah.Stanton - Clementina DuBuque
 ```
+
+### Executing Templates
+
+This module supports both a compiled mode and an "interpreted" mode.
+
+The four main methods to used to build a function are:
+- `compile`
+- `compileAsync`
+- `interpreted`
+- `interpretedAsync`
+
+For example:
+
+```javascript
+const hello = interpreted('Hello, {{name}}!')
+const helloAsync = interpretedAsync('Hello, {{name}}!')
+const helloCompiled = compile('Hello, {{name}}!')
+const helloAsyncCompiled = await compileAsync('Hello, {{name}}!) // compileAsync is a Promise that returns a function; it can pre-process logic and inline it. 
+```
+
+Any of these can now be run with:
+```javascript
+hello('Jesse') // Hello, Jesse!
+helloAsync('Bob') // Promise<'Hello, Bob!'>
+helloCompiled('Steve') // Hello, Steve!
+helloAsyncCompiled('Tara') // Promise<Hello, Tara!>
+```
+
+If you have a CSP Policy that prevents you from using `eval` or `new Function`, you must use `interpreted` or `interpretedAsync` over `compile`. 
+
+If you have no async helpers to add to your templates, it's strongly recommended you use the synchronous methods. 
+
+While the compiler / optimizer will make the execution fully synchronous if everything in the template is not async, there is still some overhead in JavaScript engiens that slow it down a bit when packing it into a promise, so it should only be used if you've added async helpers to your engine you'd like to use.
 
 ### Adding Block Helpers
 
