@@ -66,14 +66,15 @@ engine.addMethod('partial', {
 engine.addMethod('register', {
     method: (args, context, above, engine) => {
         const name = args[0]
-        const content = args.pop()
+        if (templates[name]) return ''
+        const content = args[args.length - 1]
         templates[name] = (context) => engine.run(content, context)
         templates[name].deterministic = engine.methods.map.deterministic([null, content], { engine })
         return ''
     },
     traverse: false,
     compile: (data, buildState) => {
-        const content = data.pop()
+        const content = data[data.length - 1]
         templates[data[0]] = Compiler.build(content, { ...buildState, avoidInlineAsync: true, extraArguments: 'above' })
         templates[data[0]].deterministic = buildState.engine.methods.map.deterministic([null, content], buildState)
         return '""'
