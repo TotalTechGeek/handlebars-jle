@@ -283,6 +283,10 @@ engine.addMethod('rvar', {
       if (context && context[firstPart]) return path ? engine.methods.get.method([context[firstPart], path]) : context[firstPart]
       for (let i = 0; i < above.length; i++) {
         if (above[i] && above[i][firstPart]) return path ? engine.methods.get.method([above[i][firstPart], path], context, above, engine) : above[i][firstPart]
+        if (i === above.length -1 && Array.isArray(above[i])) {
+          above = above[i]
+          i = -1
+        }
       }
       return null
   }
