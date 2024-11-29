@@ -13,6 +13,7 @@ engine.addMethod('partial', {
         if (!templates[path]) {
             const logic = compileToJSON(fs.readFileSync(path, 'utf-8'))
             templates[path] = (context, above) => engine.run(logic, context, { above })
+            templates[path].deterministic = engine.methods.map.deterministic([null, logic], { engine })
         }
         if (options) for (const key in options) options[key] = engine.run(options[key], context, { above })
         if (options?.['']) return templates[path](options[''], [null, context, above])
@@ -25,6 +26,7 @@ engine.addMethod('partial', {
         if (!templates[path]) {
             const logic = compileToJSON(fs.readFileSync(path, 'utf-8'))
             templates[path] = (context, above) => engine.run(logic, context, { above })
+            templates[path].deterministic = engine.methods.map.deterministic([null, logic], { engine })
         }
         if (options) for (const key in options) options[key] = await engine.run(options[key], context, { above })
         if (options?.['']) return templates[path](options[''], [null, context, above])
@@ -33,10 +35,10 @@ engine.addMethod('partial', {
     },
     traverse: true,
     deterministic: (data, buildState) => {
-        const check = buildState.engine.methods.if.deterministic
+        const check = buildState.engine.methods.map.deterministic
         const [rArgs, options] = processArgs(data, true)
         if (!options) return false
-        return check([Object.values(options), rArgs], buildState)
+        return check([Object.values(options), rArgs], buildState) && templates[rArgs[0]].deterministic
     },
     compile: (data, buildState) => {
         const path = data[0]
@@ -66,11 +68,14 @@ engine.addMethod('register', {
         const name = args[0]
         const content = args.pop()
         templates[name] = (context) => engine.run(content, context)
+        templates[name].deterministic = engine.methods.map.deterministic([null, content], { engine })
         return ''
     },
     traverse: false,
     compile: (data, buildState) => {
-        templates[data[0]] = Compiler.build(data.pop(), { ...buildState, avoidInlineAsync: true, extraArguments: 'above' })
+        const content = data.pop()
+        templates[data[0]] = Compiler.build(content, { ...buildState, avoidInlineAsync: true, extraArguments: 'above' })
+        templates[data[0]].deterministic = buildState.engine.methods.map.deterministic([null, content], buildState)
         return '""'
     }
 }, { sync: true })
