@@ -54,7 +54,13 @@ export function Cases () {
 'Person': `{{name}} is {{age}} years old.`,
 'SimpleIf': `{{#if account}}You have an account!{{else}}You have no account!{{/if}}`,
 'SimpleUnless': `{{#unless account}}You have no account!{{else}}You have an account!{{/unless}}`,
-'NestedIf': `{{#if account}}You have an account!{{else if (gte age 18)}}You are an adult, but you have no account!{{else}}You have no account!{{/if}}`,
+'NestedIf': `{{~#if account~}}
+    You have an account!
+    {{~else if (gte age 18)~}}
+    You are an adult, but you have no account!
+    {{~else~}}
+    You have no account!
+{{~/if}}`,
 'SimpleWith': `{{#with name='Bob'}}Hi {{name}}!{{/with}}`,
 'SimpleWithVar': `{{#with name=(default username email)}}Hi {{name}}!{{/with}}`,
 'EachStatic': `{{#each (arr 1 2 3 4 5)}}

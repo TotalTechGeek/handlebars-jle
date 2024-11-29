@@ -13,7 +13,8 @@ Some of the obvious differences include:
 - Asynchronous Execution is fully supported; this means you can add async helpers natively.
 - ~~Iteration is strictly done via block expressions like `#each`, implicit iteration is not supported. (Use `#each kids` instead of `#kids`)~~
 - There are significantly more built-in helpers, which I may remove or document as I publish this module.
-- The whitespace control is currently not supported in the grammar. (I may add it later) Ex. `{{~foo}}` is not supported.
+~~- The whitespace control is currently not supported in the grammar. (I may add it later) Ex. `{{~foo}}` is not supported.~~
+- Whitespace control is supported, but is handled by a preprocessor and not the grammar. This nuance probably won't affect you, but it's worth mentioning. (Essentially, the whitespace is stripped before the template is parsed)
 - Partials are implemented via a helper rather than dedicated syntax.
 - To avoid additional syntax, `as` is not supported in block expressions, I chose to use hash arguments in `with` instead.
 - Supports an (optimized) Interpreted Mode for both synchronous and asynchronous execution; this means you execute templates in browser contexts that disallow `new Function` or `eval`.

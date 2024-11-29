@@ -1,5 +1,6 @@
 import { AsyncLogicEngine, Compiler, Constants } from "json-logic-engine";
 import { parse } from './parser/parser.min.js'
+import { preprocess } from "./preprocessor.js";
 
 export const engine = new AsyncLogicEngine();
 engine.fallback.methods = engine.methods
@@ -363,7 +364,6 @@ export function interpretedAsync (logic, options = {}, logicEngine = engine) {
     return data => logicEngine.run(parsed, data)
 }
 
-const preprocessRegex = /(\S.*)\s*\n\s*({{[^{}]*}})\s*\n/g;
 /**
  * Takes a handlebars template string and returns a JSON Logic object
  * @param {string} str 
@@ -371,5 +371,5 @@ const preprocessRegex = /(\S.*)\s*\n\s*({{[^{}]*}})\s*\n/g;
  * @returns {*} A JSON Logic object representing the handlebars template
  */
 export function compileToJSON (str, options = {}) {
-    return parse(str.replace(preprocessRegex, '$1 $2\n'), options)
+    return parse(preprocess(str), options)
 }

@@ -1,30 +1,30 @@
 {
   "Run(#SimpleEach, { iterator: [1, 2, 3] })": {
-    "value": "\n- 1\n- 2\n- 3",
+    "value": "- 1\n- 2\n- 3\n",
     "async": false
   },
   "Run(#SimpleEach, { iterator: ['a', 'b', 'c'] })": {
-    "value": "\n- a\n- b\n- c",
+    "value": "- a\n- b\n- c\n",
     "async": false
   },
   "Run(#SimpleEach, { iterator: ['a', 'b', 'c', 'd'] })": {
-    "value": "\n- a\n- b\n- c\n- d",
+    "value": "- a\n- b\n- c\n- d\n",
     "async": false
   },
   "Run(#SimpleEach, { iterator: { a: 1, b: 2, c: 3 } })": {
-    "value": "\n- 1\n- 2\n- 3",
+    "value": "- 1\n- 2\n- 3\n",
     "async": false
   },
   "Run(#EachWithIndex, { iterator: [1, 2, 3] })": {
-    "value": "\n- 0: 1\n- 1: 2\n- 2: 3",
+    "value": "- 0: 1\n- 1: 2\n- 2: 3\n",
     "async": false
   },
   "Run(#EachWithIndex, { iterator: ['a', 'b', 'c'] })": {
-    "value": "\n- 0: a\n- 1: b\n- 2: c",
+    "value": "- 0: a\n- 1: b\n- 2: c\n",
     "async": false
   },
   "Run(#EachWithIndex, { iterator: { a: 1, b: 2, c: 3 } })": {
-    "value": "\n- a: 1\n- b: 2\n- c: 3",
+    "value": "- a: 1\n- b: 2\n- c: 3\n",
     "async": false
   },
   "Run(#Person, { name: 'John', age: 12 })": {
@@ -60,31 +60,31 @@
     "async": false
   },
   "RunAsync(#SimpleEach, { iterator: [1, 2, 3] })": {
-    "value": "\n- 1\n- 2\n- 3",
+    "value": "- 1\n- 2\n- 3\n",
     "async": true
   },
   "RunAsync(#SimpleEach, { iterator: ['a', 'b', 'c'] })": {
-    "value": "\n- a\n- b\n- c",
+    "value": "- a\n- b\n- c\n",
     "async": true
   },
   "RunAsync(#SimpleEach, { iterator: ['a', 'b', 'c', 'd'] })": {
-    "value": "\n- a\n- b\n- c\n- d",
+    "value": "- a\n- b\n- c\n- d\n",
     "async": true
   },
   "RunAsync(#SimpleEach, { iterator: { a: 1, b: 2, c: 3 } })": {
-    "value": "\n- 1\n- 2\n- 3",
+    "value": "- 1\n- 2\n- 3\n",
     "async": true
   },
   "RunAsync(#EachWithIndex, { iterator: [1, 2, 3] })": {
-    "value": "\n- 0: 1\n- 1: 2\n- 2: 3",
+    "value": "- 0: 1\n- 1: 2\n- 2: 3\n",
     "async": true
   },
   "RunAsync(#EachWithIndex, { iterator: ['a', 'b', 'c'] })": {
-    "value": "\n- 0: a\n- 1: b\n- 2: c",
+    "value": "- 0: a\n- 1: b\n- 2: c\n",
     "async": true
   },
   "RunAsync(#EachWithIndex, { iterator: { a: 1, b: 2, c: 3 } })": {
-    "value": "\n- a: 1\n- b: 2\n- c: 3",
+    "value": "- a: 1\n- b: 2\n- c: 3\n",
     "async": true
   },
   "RunAsync(#Person, { name: 'John', age: 12 })": {
@@ -120,95 +120,95 @@
     "async": true
   },
   "Run(#EachStatic, {})": {
-    "value": "\n- 1\n- 2\n- 3\n- 4\n- 5",
+    "value": "- 1\n- 2\n- 3\n- 4\n- 5\n",
     "async": false
   },
   "RunAsync(#EachStatic, {})": {
-    "value": "\n- 1\n- 2\n- 3\n- 4\n- 5",
+    "value": "- 1\n- 2\n- 3\n- 4\n- 5\n",
     "async": true
   },
   "RunAsync(#Fetch)": {
-    "value": "\n- @Bret - Leanne Graham\n- @Antonette - Ervin Howell\n- @Samantha - Clementine Bauch\n- @Karianne - Patricia Lebsack\n- @Kamren - Chelsey Dietrich\n- @Leopoldo_Corkery - Mrs. Dennis Schulist\n- @Elwyn.Skiles - Kurtis Weissnat\n- @Maxime_Nienow - Nicholas Runolfsdottir V\n- @Delphine - Glenna Reichert\n- @Moriah.Stanton - Clementina DuBuque",
+    "value": "- @Bret - Leanne Graham\n- @Antonette - Ervin Howell\n- @Samantha - Clementine Bauch\n- @Karianne - Patricia Lebsack\n- @Kamren - Chelsey Dietrich\n- @Leopoldo_Corkery - Mrs. Dennis Schulist\n- @Elwyn.Skiles - Kurtis Weissnat\n- @Maxime_Nienow - Nicholas Runolfsdottir V\n- @Delphine - Glenna Reichert\n- @Moriah.Stanton - Clementina DuBuque\n",
     "async": true
   },
   "RunAsync(#FetchIterator, { items: [1, 3, 5] })": {
-    "value": "\n- Leanne Graham\n- Clementine Bauch\n- Chelsey Dietrich",
+    "value": "- Leanne Graham\n- Clementine Bauch\n- Chelsey Dietrich\n",
     "async": true
   },
   "RunAsync(#FetchIterator, { items: [1, 2] })": {
-    "value": "\n- Leanne Graham\n- Ervin Howell",
+    "value": "- Leanne Graham\n- Ervin Howell\n",
     "async": true
   },
   "RunAsync(#Example, #ExampleData)": {
-    "value": "<div class=\"simple-1\" style=\"background-color: blue; border: 1px solid black\">\n    <div class=\"colors\">\n        <span class=\"hello\">Hello George Washington! <strong>You have 999 messages!</strong></span> \n        <ul> \n            <li class=\"color\">red</li>\n            <li class=\"color\">green</li>\n            <li class=\"color\">blue</li>\n            <li class=\"color\">yellow</li>\n            <li class=\"color\">orange</li>\n            <li class=\"color\">pink</li>\n            <li class=\"color\">black</li>\n            <li class=\"color\">white</li>\n            <li class=\"color\">beige</li>\n            <li class=\"color\">brown</li>\n            <li class=\"color\">cyan</li>\n            <li class=\"color\">magenta</li>\n        </ul> \n    </div>\n    <button type=\"button\" class=\"primary\">Click me!</button>\n</div>",
+    "value": "<div class=\"simple-1\" style=\"background-color: blue; border: 1px solid black\">\n    <div class=\"colors\">\n        <span class=\"hello\">Hello George Washington! <strong>You have 999 messages!</strong></span>\n        <ul>\n            <li class=\"color\">red</li>\n            <li class=\"color\">green</li>\n            <li class=\"color\">blue</li>\n            <li class=\"color\">yellow</li>\n            <li class=\"color\">orange</li>\n            <li class=\"color\">pink</li>\n            <li class=\"color\">black</li>\n            <li class=\"color\">white</li>\n            <li class=\"color\">beige</li>\n            <li class=\"color\">brown</li>\n            <li class=\"color\">cyan</li>\n            <li class=\"color\">magenta</li>\n\n        </ul>\n\n    </div>\n    <button type=\"button\" class=\"primary\">Click me!</button>\n</div>",
     "async": true
   },
   "RunAsync(#FetchIterator, { items: { a: 1 } })": {
-    "value": "\n- Leanne Graham",
+    "value": "- Leanne Graham\n",
     "async": true
   },
   "Run(#Example, #ExampleData)": {
-    "value": "<div class=\"simple-1\" style=\"background-color: blue; border: 1px solid black\">\n    <div class=\"colors\">\n        <span class=\"hello\">Hello George Washington! <strong>You have 999 messages!</strong></span> \n        <ul> \n            <li class=\"color\">red</li>\n            <li class=\"color\">green</li>\n            <li class=\"color\">blue</li>\n            <li class=\"color\">yellow</li>\n            <li class=\"color\">orange</li>\n            <li class=\"color\">pink</li>\n            <li class=\"color\">black</li>\n            <li class=\"color\">white</li>\n            <li class=\"color\">beige</li>\n            <li class=\"color\">brown</li>\n            <li class=\"color\">cyan</li>\n            <li class=\"color\">magenta</li>\n        </ul> \n    </div>\n    <button type=\"button\" class=\"primary\">Click me!</button>\n</div>",
+    "value": "<div class=\"simple-1\" style=\"background-color: blue; border: 1px solid black\">\n    <div class=\"colors\">\n        <span class=\"hello\">Hello George Washington! <strong>You have 999 messages!</strong></span>\n        <ul>\n            <li class=\"color\">red</li>\n            <li class=\"color\">green</li>\n            <li class=\"color\">blue</li>\n            <li class=\"color\">yellow</li>\n            <li class=\"color\">orange</li>\n            <li class=\"color\">pink</li>\n            <li class=\"color\">black</li>\n            <li class=\"color\">white</li>\n            <li class=\"color\">beige</li>\n            <li class=\"color\">brown</li>\n            <li class=\"color\">cyan</li>\n            <li class=\"color\">magenta</li>\n\n        </ul>\n\n    </div>\n    <button type=\"button\" class=\"primary\">Click me!</button>\n</div>",
     "async": false
   },
   "Run(#AddExampleWithTraversal, { addend: 10 })": {
-    "value": "\n- 11\n- 12\n- 13\n- 14\n- 15",
+    "value": "- 11\n- 12\n- 13\n- 14\n- 15\n",
     "async": false
   },
   "RunAsync(#AddExampleWithTraversal, { addend: 10 })": {
-    "value": "\n- 11\n- 12\n- 13\n- 14\n- 15",
+    "value": "- 11\n- 12\n- 13\n- 14\n- 15\n",
     "async": true
   },
   "Run(#ImplicitIterator, { people: [{ name: 'John', age: 12 }, { name: 'Jane', age: 24 }] })": {
-    "value": "\n- John: 12\n- Jane: 24",
+    "value": "- John: 12\n- Jane: 24\n",
     "async": false
   },
   "RunAsync(#ImplicitIterator, { people: [{ name: 'John', age: 12 }, { name: 'Jane', age: 24 }] })": {
-    "value": "\n- John: 12\n- Jane: 24",
+    "value": "- John: 12\n- Jane: 24\n",
     "async": true
   },
   "Run(#RecursiveVarTest, { username: 'Bob', user: { identity: { age: 20 }  } })": {
-    "value": " \n    - Bob Austin 21\n    - Bob Austin 22\n    - Bob Austin 23",
+    "value": "    - Bob Austin 21\n    - Bob Austin 22\n    - Bob Austin 23\n",
     "async": false
   },
   "Run(#SimpleEach, { iterator: Set(['a', 'b', 'c']) })": {
-    "value": "\n- a\n- b\n- c",
+    "value": "- a\n- b\n- c\n",
     "async": false
   },
   "Run(#SimpleEach, { iterator: fib() })": {
-    "value": "\n- 1\n- 1\n- 2\n- 3\n- 5\n- 8\n- 13",
+    "value": "- 1\n- 1\n- 2\n- 3\n- 5\n- 8\n- 13\n",
     "async": false
   },
   "RunAsync(#SimpleEach, { iterator: Set(['a', 'b', 'c']) })": {
-    "value": "\n- a\n- b\n- c",
+    "value": "- a\n- b\n- c\n",
     "async": true
   },
   "RunAsync(#SimpleEach, { iterator: fib() })": {
-    "value": "\n- 1\n- 1\n- 2\n- 3\n- 5\n- 8\n- 13",
+    "value": "- 1\n- 1\n- 2\n- 3\n- 5\n- 8\n- 13\n",
     "async": true
   },
   "Run(#EachWithIndex, { iterator: Set(['a', 'b', 'c']) })": {
-    "value": "\n- 0: a\n- 1: b\n- 2: c",
+    "value": "- 0: a\n- 1: b\n- 2: c\n",
     "async": false
   },
   "Run(#EachWithIndex, { iterator: fib() })": {
-    "value": "\n- 0: 1\n- 1: 1\n- 2: 2\n- 3: 3\n- 4: 5\n- 5: 8\n- 6: 13",
+    "value": "- 0: 1\n- 1: 1\n- 2: 2\n- 3: 3\n- 4: 5\n- 5: 8\n- 6: 13\n",
     "async": false
   },
   "Run(#EachWithIndex, { iterator: Map({ John: 12, Susan: 24 }) })": {
-    "value": "\n- John: 12\n- Susan: 24",
+    "value": "- John: 12\n- Susan: 24\n",
     "async": false
   },
   "RunAsync(#EachWithIndex, { iterator: Set(['a', 'b', 'c']) })": {
-    "value": "\n- 0: a\n- 1: b\n- 2: c",
+    "value": "- 0: a\n- 1: b\n- 2: c\n",
     "async": true
   },
   "RunAsync(#EachWithIndex, { iterator: fib() })": {
-    "value": "\n- 0: 1\n- 1: 1\n- 2: 2\n- 3: 3\n- 4: 5\n- 5: 8\n- 6: 13",
+    "value": "- 0: 1\n- 1: 1\n- 2: 2\n- 3: 3\n- 4: 5\n- 5: 8\n- 6: 13\n",
     "async": true
   },
   "RunAsync(#EachWithIndex, { iterator: Map({ John: 12, Susan: 24 }) })": {
-    "value": "\n- John: 12\n- Susan: 24",
+    "value": "- John: 12\n- Susan: 24\n",
     "async": true
   },
   "Run(#SimpleUnless, { account: true })": {

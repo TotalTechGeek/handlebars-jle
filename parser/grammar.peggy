@@ -10,13 +10,14 @@
 }
 
 Content = data:(Element / Text)* { return { cat: data } }
-Element = startTag:sTag content:Content endTag:eTag {
+Element = "{{NEWLINE}}" { return "\n" } /
+  startTag:sTag content:Content endTag:eTag {
     if (startTag.name != endTag && startTag.oName != endTag) {
       throw new Error(
         "Expected {{/" + startTag.name + "}} but {{/" + endTag + "}} found."
       );
     }
-    if (typeof content.cat[content.cat.length -1] === 'string') content.cat.push(content.cat.pop().trimEnd())
+    if (typeof content.cat[content.cat.length -1] === 'string') content.cat.push(content.cat.pop())
     // Patch for #if and #unless
     if (startTag.name === 'if' || startTag.name === 'unless') {
       // Admittedly, this unless hack is a little not cool, maybe I should add something into JSON Logic, like macros to make it easier
