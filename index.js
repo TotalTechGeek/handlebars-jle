@@ -263,11 +263,45 @@ engine.addMethod('match', (args) => {
 
 engine.addMethod('merge', (args) => Object.assign({}, ...args), { deterministic: true, sync: true });
 
-engine.addMethod('obj', (args) => {
-    const [pArgs, obj] = processArgs(args)
-    for (let i = 0; i < pArgs.length; i += 2) obj[pArgs[i]] = pArgs[i+1]
-    return obj
-}, { deterministic: true, sync: true });
+engine.addMethod('obj', {
+  method: (args, context, above, engine) => {
+      const [pArgs, obj] = processArgs(args)
+      const res = {}
+      for (const key in obj) res[key] = engine.run(obj[key], context, { above })
+      for (let i = 0; i < pArgs.length; i += 2) res[pArgs[i]] = pArgs[i+1]
+      return res
+  },
+  asyncMethod: async (args, context, above, engine) => {
+      const [pArgs, obj] = processArgs(args)
+      const res = {}
+      for (const key in obj) res[key] = await engine.run(obj[key], context, { above })
+      for (let i = 0; i < pArgs.length; i += 2) res[pArgs[i]] = pArgs[i+1]
+      return res
+  },
+  traverse: true, 
+  compile: (data, buildState) => {
+    let res = buildState.compile`{`
+    const [pArgs, obj] = processArgs(data)
+    
+    let first = true
+    for (const key in obj) {
+      res = buildState.compile`${res}${first ? buildState.compile`` : buildState.compile`,`} ${key}: ${obj[key]}`
+      first = false
+    }
+
+    for (let i = 0; i < pArgs.length; i += 2) {
+      res = buildState.compile`${res}${first ? buildState.compile`` : buildState.compile`,`} ${pArgs[i]}: ${pArgs[i+1]}`
+      first = false
+    }
+    
+    return buildState.compile`${res} }`
+  },
+  deterministic: (data, buildState) => {
+    const check = buildState.engine.methods.if.deterministic
+    const [pArgs, obj] = processArgs(data)
+    return check([Object.values(obj), pArgs], buildState)
+  }
+});
 
 engine.methods.object = engine.methods.obj;
 engine.methods.array = engine.methods.arr;

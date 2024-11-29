@@ -101,6 +101,7 @@ ExampleData: {
 },
 'SimpleJSON': `{{json (obj name='John' age=12)}}`,
 'SimpleJSON2': `{{json (obj 'name' 'John' 'age' 12)}}`,
+'JSONNonDeterministic': `{{json (obj name=fullName age=actualAge 'test' 3)}}`,
 'AddExampleWithTraversal': `{{#each (arr 1 2 3 4 5)}}
 - {{add this ../addend}}
 {{/each}}`,
@@ -167,6 +168,7 @@ ExampleData: {
  * @test #Example, #ExampleData
  * @test #SimpleJSON returns '{"name":"John","age":12}'
  * @test #SimpleJSON2 returns '{"name":"John","age":12}'
+ * @test #JSONNonDeterministic, { fullName: 'John Doe', actualAge: 20 } returns '{"name":"John Doe","age":20,"test":3}'
  * @test #AddExampleWithTraversal, { addend: 10 }
  * @test #ImplicitIterator, { people: [{ name: 'John', age: 12 }, { name: 'Jane', age: 24 }] }
  * @test #Fallthrough returns 'Woot!'
@@ -221,6 +223,7 @@ export function Run(script, data) {
  * @test #Example, #ExampleData
  * @test #SimpleJSON resolves '{"name":"John","age":12}'
  * @test #SimpleJSON2 resolves '{"name":"John","age":12}'
+ * @test #JSONNonDeterministic, { fullName: 'John Doe', actualAge: 20 } resolves '{"name":"John Doe","age":20,"test":3}'
  * @test #AddExampleWithTraversal, { addend: 10 }
  * @test #ImplicitIterator, { people: [{ name: 'John', age: 12 }, { name: 'Jane', age: 24 }] }
  * @test #Unescaped, { name: '<b>John</b>' } resolves '<b>John</b>'
@@ -258,6 +261,7 @@ export async function RunAsync(script, data) {
  * @test #EachStatic, {} returns true
  * @test #Example, #ExampleData returns true
  * @test #AddExampleWithTraversal, { addend: 10 } returns true
+ * @test #JSONNonDeterministic, { fullName: 'John Doe', actualAge: 20 } returns true
  */
 export function RunMethodMatch(script, data) {
     return interpreted(script, { recurse: false })(data) === Run(script, data)
@@ -295,6 +299,7 @@ export function RunMethodMatch(script, data) {
  * @test #FetchIterator, { items: { a: 1 } } resolves true
  * @test #Example, #ExampleData resolves true
  * @test #AddExampleWithTraversal, { addend: 10 } resolves true
+ * @test #JSONNonDeterministic, { fullName: 'John Doe', actualAge: 20 } resolves true
  */
 export async function RunMethodAsyncMatch(script, data) {
     return (await interpretedAsync(script, { recurse: false })(data)) === (await RunAsync(script, data))
