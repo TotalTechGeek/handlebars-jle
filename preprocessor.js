@@ -23,6 +23,7 @@ export function preprocess (str) {
         // Check if the current line is a block helper ONLY
         // regex to check if the line starts with {{# and ends with }}
         if (/^{{~?#.*~?}}$/.test(trimmedLine)) {
+            current = current.replace(/{+$/g, i => i.replace(/{/g, '{{ESCAPED_CHAR {}}'))
             current += ((current && !prevBlockOnly) ? '{{NEWLINE}}' : '') + trimmedLine 
             prevClosing = false
             continue
@@ -49,6 +50,12 @@ export function preprocess (str) {
         if (prevElse) {
             current += '\n' + prevElse + lines[i]
             prevElse = false
+            continue
+        }
+
+        if (prevClosing) {
+            prevClosing = false
+            current += lines[i]
             continue
         }
 

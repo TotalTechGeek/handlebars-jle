@@ -9,9 +9,13 @@
   const varAccess = options.recurse ? 'rvar' : 'var'
 }
 
-Content = data:(Element / Text)* { return { cat: data } }
-Element = "{{NEWLINE}}" { return "\n" } /
-  startTag:sTag content:Content endTag:eTag {
+
+Content = data:(EscapedElement / Element / Text)* { return { cat: data } }
+EscapedElement = "\\" Element { return text() }
+Element = "{{NEWLINE}}" { return "\n" } 
+  / "{{EMPTY_STRING}}" { return "" }
+  / "{{ESCAPED_CHAR " escapedChar:. "}}" { return escapedChar }
+  / startTag:sTag content:Content endTag:eTag {
     if (startTag.name != endTag && startTag.oName != endTag) {
       throw new Error(
         "Expected {{/" + startTag.name + "}} but {{/" + endTag + "}} found."
@@ -83,7 +87,7 @@ eTag = _ "{{/" name:TagName "}}" { return name; }
 TagName = test:'../'+ chars:[@$a-zA-Z_.-]* { return test.join('') + chars.join(""); }
   / './' chars:[@$a-zA-Z_.-]+ { return chars.join(""); }
   / chars:[@$a-zA-Z_.-]+ { return chars.join(""); }
-Text = chars:([^{}] / "{" !"{" / "}" !"}")+ { return chars.flat().join(""); }
+Text = chars:([^{}\\] / "{" !"{" / "}" !"}")+ { return chars.flat().join(""); }
 Arg = _ data:(Func / Boolean / Null / Undefined / HashArg / Variable / Number / Str) _ { return data }
 Variable = chars:[@$a-zA-Z_./-]+ { 
   chars = chars.join("").replace(/\.\.\//g, '../../').replace(/\.\.\/this\.?/g, '../')
