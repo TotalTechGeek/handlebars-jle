@@ -182,7 +182,7 @@ If you have a CSP Policy that prevents you from using `eval` or `new Function`, 
 
 If you have no async helpers to add to your templates, it's strongly recommended you use the synchronous methods. 
 
-While the compiler / optimizer will make the execution fully synchronous if everything in the template is not async, there is still some overhead in JavaScript engiens that slow it down a bit when packing it into a promise, so it should only be used if you've added async helpers to your engine you'd like to use.
+While the compiler / optimizer will make the execution fully synchronous if everything in the template is not async, there is still some overhead in JavaScript engines that slow it down a bit when packing it into a promise, so it should only be used if you've added async helpers to your engine you'd like to use.
 
 ### Adding Block Helpers
 

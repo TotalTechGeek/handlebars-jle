@@ -54,7 +54,7 @@ Element = "{{NEWLINE}}" { return "\n" } /
   }
   / startTag:selfTag { return startTag; }
 
-sTag = "{{#" name:TagName args:Arg* "}}" { 
+sTag = "{{#" name:TagName args:Arg* "}}" '\n'? { 
   const found = name in (options.methods || {}) || name === 'with' || name === 'if' || name === 'each'
   // Assume implicit iteration / if; workaround.
   if (!found && !args.length) return { oName: name, name: '$eachOrIf', args }
