@@ -101,7 +101,7 @@ Variable = chars:[@$a-zA-Z_./-]+ {
 Boolean = data:("true" / "false") { return data === "true" }
 Null = "null" { return null }
 Undefined = "undefined" { return undefined }
-HashArg = val:Variable _ "=" data:Arg { return { preserve: { [val[varAccess]]: data, [HashArg]: true } }; }
+HashArg = val:Variable _ "=" data:Arg { return { '%HashArg': [val[varAccess], data], [HashArg]: true } }; 
 Number   = chars:[0-9]+ { return parseInt(chars.join(""), 10) }
 Str = "\"" chars:[^\"]* "\"" { return chars.join(""); }
  / "\'" chars:[^"'"]* "\'" { return chars.join(""); }

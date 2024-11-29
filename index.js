@@ -262,21 +262,13 @@ engine.addMethod('match', (args) => {
 }, { deterministic: true, sync: true });
 
 engine.addMethod('merge', (args) => Object.assign({}, ...args), { deterministic: true, sync: true });
+engine.addMethod('%HashArg', ([key, value]) => ({ [key]: value, [HashArg]: true }), { sync: true, deterministic: true });
 
 engine.addMethod('obj', {
   method: (args, context, above, engine) => {
       const [pArgs, obj] = processArgs(args)
-      const res = {}
-      for (const key in obj) res[key] = engine.run(obj[key], context, { above })
-      for (let i = 0; i < pArgs.length; i += 2) res[pArgs[i]] = pArgs[i+1]
-      return res
-  },
-  asyncMethod: async (args, context, above, engine) => {
-      const [pArgs, obj] = processArgs(args)
-      const res = {}
-      for (const key in obj) res[key] = await engine.run(obj[key], context, { above })
-      for (let i = 0; i < pArgs.length; i += 2) res[pArgs[i]] = pArgs[i+1]
-      return res
+      for (let i = 0; i < pArgs.length; i += 2) obj[pArgs[i]] = pArgs[i+1]
+      return obj
   },
   traverse: true, 
   compile: (data, buildState) => {
@@ -296,11 +288,7 @@ engine.addMethod('obj', {
     
     return buildState.compile`${res} }`
   },
-  deterministic: (data, buildState) => {
-    const check = buildState.engine.methods.if.deterministic
-    const [pArgs, obj] = processArgs(data)
-    return check([Object.values(obj), pArgs], buildState)
-  }
+  deterministic: true
 });
 
 engine.methods.object = engine.methods.obj;
@@ -339,12 +327,9 @@ export function processArgs (args, nullIfEmpty = false) {
     let options = {} 
     let assigned = false
     for (const arg of args) {
-        if (arg && arg.preserve?.[HashArg]) { 
-          Object.assign(options, arg.preserve);
-          assigned = true;
-        }
-        else if (arg && arg[HashArg]) {
-          Object.assign(options, arg);
+        if (arg && arg[HashArg]) {
+          if (arg['%HashArg']) options[arg['%HashArg'][0]] = arg['%HashArg'][1]
+          else Object.assign(options, arg)
           assigned = true;
         }
         else rArgs.push(arg);
