@@ -1,6 +1,6 @@
 import Elastic from 'kbn-handlebars'
 import Handlebars from 'handlebars'
-import { compile, interpreted, compileAsync } from '../index.js'
+import { compile, interpreted, compileAsync, registerPartial } from '../index.js'
 import { Cases } from '../index.test.js'
 
 const cases = Cases()
@@ -24,6 +24,25 @@ Handlebars.registerHelper('multiply', (a, b) => a * b)
 Elastic.default.registerHelper('multiply', (a, b) => a * b)
 Handlebars.registerHelper('lowercase', (a) => a.toLowerCase())
 Elastic.default.registerHelper('lowercase', (a) => a.toLowerCase())
+
+const AgePartial = '{{#unless age}}You have no age{{^}}You have an age{{/unless}}'
+const TestPartial = 'Hello {{name}}!'
+const StartupTimePartial = new Date().toISOString()
+
+registerPartial('Age', AgePartial)
+registerPartial('Test', TestPartial)
+registerPartial('StartupTime', StartupTimePartial)
+
+
+Handlebars.registerPartial('Age', AgePartial)
+Handlebars.registerPartial('Test', TestPartial)
+Handlebars.registerPartial('StartupTime', StartupTimePartial)
+
+Elastic.default.registerPartial('Age', AgePartial)
+Elastic.default.registerPartial('Test', TestPartial)
+Elastic.default.registerPartial('StartupTime', StartupTimePartial)
+
+
 
 const simpleTemplate = 'Hello, {{name}}!'
 
@@ -164,3 +183,16 @@ await runBench('YAML', template, () => ({
     },
     memory: 512
 }))
+
+
+const partialTemplate = `
+{{>Test name="Jesse"}}
+{{>Test name="John"}}
+{{>Test name="Bob"}}
+{{>Test name=name}}
+{{>Age age=true}}
+{{>Age age=false}}
+{{>StartupTime}}
+`
+
+await runBench('Partials', partialTemplate, () => ({ name: 'Dave' }))
