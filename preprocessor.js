@@ -24,7 +24,7 @@ export function preprocess (str) {
         // regex to check if the line starts with {{# and ends with }}
         if (/^{{~?#.*~?}}$/.test(trimmedLine)) {
             current = current.replace(/{+$/g, i => i.replace(/{/g, '{{ESCAPED_CHAR {}}'))
-            current += ((current && !prevBlockOnly) ? '{{NEWLINE}}' : '') + trimmedLine 
+            current += ((current && !prevBlockOnly) ? '{{ESCAPED_CHAR \n}}' : '') + trimmedLine 
             prevClosing = false
             continue
         }
@@ -42,7 +42,7 @@ export function preprocess (str) {
         }
 
         // Check if the current line is "{{else" and ends with "}}"
-        if (/^{{~?else.*~?}}$/.test(trimmedLine)) {
+        if (/^{{~?(else|\^).*~?}}$/.test(trimmedLine)) {
             prevElse = trimmedLine
             continue
         }
