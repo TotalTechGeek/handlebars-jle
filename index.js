@@ -349,6 +349,106 @@ engine.addMethod('rvar', {
 }, { deterministic: false, sync: true })
 
 
+const templates = {}
+engine.addMethod('%partial', {
+    method: (args, context, above, engine) => {
+        const path = args[0]
+        const options = processArgs(args, true)[1]
+        if (!templates[path]) throw new Error(`Template ${path} not found`)
+        if (options) for (const key in options) options[key] = engine.run(options[key], context, { above })
+        if (options?.['']) return templates[path](options[''], [null, context, above], engine)
+        else if (options) return templates[path](options, [null, context, above], engine)        
+        return templates[path](context, [null, context, above], engine)
+    },
+    asyncMethod: async (args, context, above, engine) => {
+        const path = args[0]
+        const options = processArgs(args, true)[1]
+        if (!templates[path]) throw new Error(`Template ${path} not found`)
+        if (options) for (const key in options) options[key] = await engine.run(options[key], context, { above })
+        if (options?.['']) return templates[path](options[''], [null, context, above], engine)
+        else if (options) return templates[path](options, [null, context, above], engine)
+        return templates[path](context, [null, context, above], engine)
+    },
+    traverse: true,
+    deterministic: (data, buildState) => {
+        const check = buildState.engine.methods.map.deterministic
+        const [rArgs, options] = processArgs(data, true)
+        if (!options) return check([rArgs], buildState) && templates[rArgs[0]] && templates[rArgs[0]].deterministicInline
+        return check([Object.values(options), rArgs], buildState) && templates[rArgs[0]] && templates[rArgs[0]].deterministic
+    },
+    compile: (data, buildState) => {
+        const path = data[0]
+        const options = processArgs (data, true)[1]
+    
+        if (options?.['']) return buildState.compile`${templates[path]}(${options['']}, [null, context, above], engine)`
+
+        if (options) {
+            let res = buildState.compile`{`
+            let first = true
+            for (const key in options) {
+                res = buildState.compile`${res}${first ? buildState.compile`` : buildState.compile`,`} ${key}: ${options[key]}`
+                first = false
+            }
+            res = buildState.compile`${res} }`
+            return buildState.compile`${templates[path]}(${res}, [null, context, above], engine)`
+        }
+        
+        return false
+    }
+})
+
+// Warning: This guy isn't scoped to the template; so registering in one template will register in all
+// This can allow for mangling.
+engine.addMethod('inline', {
+    method: (args, context, above, engine) => {
+        const name = args[0]
+        if (templates[name]) return ''
+        const content = args[args.length - 1]
+        templates[name] = (context, above, engine) => engine.run(content, context, { above })
+        templates[name].deterministic = engine.methods.map.deterministic([null, content], { engine })
+        return ''
+    },
+    traverse: false,
+    compile: (data, buildState) => {
+        const content = data[data.length - 1]
+        templates[data[0]] = Compiler.build(content, { ...buildState, avoidInlineAsync: true, extraArguments: 'above' })
+        templates[data[0]].deterministic = buildState.engine.methods.map.deterministic([null, content], buildState)
+        return '""'
+    }
+}, { sync: true })
+
+
+/**
+ * Registers a partial that can be run with JSON data, uses the logic compiler
+ * @param {string} name 
+ * @param {*} template 
+ * @param {{ noEscape?: boolean, recurse?: boolean, engine?: any }} options 
+ */
+export function registerPartial (name, template, options = {}) {
+    const logic = compileToJSON(template, {...options, methods: engine.methods })
+    const selectedEngine = options.engine || engine
+    templates[name] = Compiler.build(logic, { engine, avoidInlineAsync: true, extraArguments: 'above' })
+    templates[name].deterministic = engine.methods.map.deterministic([null, logic], { engine })
+    templates[name].deterministicInline = engine.methods.if.deterministic(logic, { engine: selectedEngine })
+    templates[name][Constants.Sync] = engine.methods.map[Constants.Sync](logic, { engine })
+} 
+
+/**
+ * Registers a partial in interpreted mode that can be run with JSON data
+ * Avoids CSP Issues
+ * @param {string} name 
+ * @param {string} template 
+ * @param {{ noEscape?: boolean, recurse?: boolean, engine?: any }} options 
+ */
+export function registerPartialInterpreted (name, template, options) {
+  const logic = compileToJSON(template, options)
+  const isSync = engine.methods.map[Constants.Sync](logic, { engine })
+  templates[name] = (context, above, engine) => (isSync ? engine.fallback || engine : engine).run(logic, context, { above })
+  templates[name][Constants.Sync] = isSync
+  templates[name].deterministic = engine.methods.map.deterministic([null, logic], { engine })
+  templates[name].deterministicInline = engine.methods.if.deterministic(logic, { engine })
+}
+
 /**
  * Extracts hash arguments from the arguments array and simplifies it into an object,
  * returning the simplified arguments array and the hash arguments object
@@ -395,6 +495,7 @@ export async function compileAsync (str, options = {}) {
 /**
  * Creates a function that can be run with JSON data to get the result of running the logic.
  * Does not use eval; so it can work in environments where eval is disabled.
+ * Avoids CSP issues
  * @param {*} logic 
  * @param {{ noEscape?: boolean, recurse?: boolean }} options
  * @returns {(data: any) => string} The result of running the logic with the data
@@ -407,6 +508,7 @@ export function interpreted (logic, options = {}, logicEngine = engine.fallback)
 /**
  * Creates a function that can be run with JSON data to get the result of running the logic.
  * Does not use eval; so it can work in environments where eval is disabled.
+ * Avoids CSP issues
  * @param {*} logic
  * @param {{ noEscape?: boolean, recurse?: boolean }} options
  * @returns {(data: any) => Promise<string>} The result of running the logic with the data

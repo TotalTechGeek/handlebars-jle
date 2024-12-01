@@ -93,7 +93,9 @@ selfTag = "{{" name:TagName args:Arg* "}}" {
   if (name === "@index" || name === "@key") return { var: '../index'}
   if (name.startsWith("this.")) return { var: name.substring(5) }
   return getVar(name.replace(/\.\.\//g, '../../').replace(/\.\.\/this\.?/g, '../'))
-} 
+} /  "{{>" _ name:TagName args:Arg* "}}" {
+  return { "%partial": [name, ...args] }
+}
 
 eTag = _ "{{/" name:TagName "}}" { return name; }
 TagName = '../'+ [@$a-zA-Z_.-]* { return text(); }
