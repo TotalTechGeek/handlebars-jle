@@ -6,7 +6,6 @@ export const engine = new AsyncLogicEngine();
 engine.fallback.methods = engine.methods
 const HashArg = Symbol.for('HashArg');
 
-
 // Inspired by escape-html
 // Also, this can be easily overridden for different escaping requirements
 engine.addMethod('escape', (str) => {
@@ -89,47 +88,63 @@ function each (iterable, func) {
     return res
   }
   
+/**
+ * Function used to help set the "above" context for iterables during
+ * interpreted mode. This guy will check the "as" settings and
+ * reconfigure what values are assigned to.
+ */
+function createBlockParamContext (index, value, as) {
+  const val = { index }
+  if (!as) return val
+  if (as.length === 1) val[as[0]] = value
+  else if (as.length >= 2) val[as[0]] = value, val[as[1]] = index
+  return val 
+}
+
   engine.addMethod('each', {
-    method: (data, context, above, engine) => {
+    method: (preprocessed, context, above, engine) => {
+      const [data, options] = processArgs(preprocessed)
       const iterable = engine.run(data[0], context, above, engine)
       if (!iterable) return ''
       let res = ''
       if (Array.isArray(iterable)) {
         for (let i = 0; i < iterable.length; i++) {
-          res += engine.run(data[1], iterable[i], { above: [{ index: i }, context, above] })
+          res += engine.run(data[1], iterable[i], { above: [createBlockParamContext(i, iterable[i], options.as), context, above] })
         }
       } else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
         let i = 0
-        if (iterable instanceof Map) for (const [key, value] of iterable) res += engine.run(data[1], value, { above: [{ index: key }, context, above] })
-        else for (const item of iterable) res += engine.run(data[1], item, { above: [{ index: i++ }, context, above] })
+        if (iterable instanceof Map) for (const [key, value] of iterable) res += engine.run(data[1], value, { above: [createBlockParamContext(key, value, options.as), context, above] })
+        else for (const item of iterable) res += engine.run(data[1], item, { above: [createBlockParamContext(i++, item, options.as), context, above] })
       } else if (typeof iterable === 'object') {
         for (const key in iterable) {
-          res += engine.run(data[1], iterable[key], { above: [{ index: key }, context, above] })
+          res += engine.run(data[1], iterable[key], { above: [createBlockParamContext(key, iterable[key], options.as), context, above] })
         }
       }
       return res
     },
-    asyncMethod: async (data, context, above, engine) => {
+    asyncMethod: async (preprocessed, context, above, engine) => {
+      const [data, options] = processArgs(preprocessed)
       const iterable = await engine.run(data[0], context, above, engine)
       if (!iterable) return ''
       let res = ''
       if (Array.isArray(iterable)) {
         for (let i = 0; i < iterable.length; i++) {
-          res += await engine.run(data[1], iterable[i], { above: [{ index: i }, context, above] })
+          res += await engine.run(data[1], iterable[i], { above: [createBlockParamContext(i, iterable[i], options.as), context, above] })
         }
       } else if (iterable && typeof iterable[Symbol.iterator] === 'function') { 
         // Todo: Add Async Iterator Support
         let i = 0
-        if (iterable instanceof Map) for (const [key, value] of iterable) res += await engine.run(data[1], value, { above: [{ index: key }, context, above] })
-        else for (const item of iterable) res += await engine.run(data[1], item, { above: [{ index: i++ }, context, above] })
+        if (iterable instanceof Map) for (const [key, value] of iterable) res += await engine.run(data[1], value, { above: [createBlockParamContext(key, value, options.as), context, above] })
+        else for (const item of iterable) res += await engine.run(data[1], item, { above: [createBlockParamContext(i++, item, options.as), context, above] })
       } else if (typeof iterable === 'object') {
         for (const key in iterable) {
-          res += await engine.run(data[1], iterable[key], { above: [{ index: key }, context, above] })
+          res += await engine.run(data[1], iterable[key], { above: [createBlockParamContext(key, iterable[key], options.as), context, above] })
         }
       }
       return res
     },
-    compile: (data, buildState) => {
+    compile: (preprocessed, buildState) => {
+      const [data, options] = processArgs(preprocessed)
       const { async } = buildState
       let [selector, mapper] = data
       selector = Compiler.buildString(selector, buildState)
@@ -143,17 +158,25 @@ function each (iterable, func) {
       buildState.methods.push(mapper)
       buildState.methods.each = each
       buildState.methods.eachAsync = eachAsync
+
+      // Todo: Maybe we can make a utility for this.
+      let currentState = 'null'
+      if (options.as) {
+        if (options.as.length === 1) currentState = `{ ${JSON.stringify(options.as[0])}: i }`
+        if (options.as.length >= 2) currentState = `{ ${JSON.stringify(options.as[0])}: i, ${JSON.stringify(options.as[1])}: x }`
+      }
+
       if (async) {
         if (!Constants.isSync(mapper)) {
           buildState.detectAsync = true
           return `await methods.eachAsync(${selector} || [], (i,x) => methods[${
             buildState.methods.length - 1
-          }](i, x, [null, context, above]))`
+          }](i, x, [${currentState}, context, above]))`
         }
       }
       return `methods.each(${selector} || [], (i,x) => methods[${
         buildState.methods.length - 1
-      }](i, x, [null, context, above]))`
+      }](i, x, [${currentState}, context, above]))`
     },
     traverse: false,
     deterministic: engine.methods.map.deterministic
@@ -203,11 +226,14 @@ engine.addMethod('with', {
 
         const optionsLength = Object.keys(options).length
         for (const key in options) options[key] = engine.run(options[key], context, { above })
+
         if (rArgs.length) rArgs[0] = engine.run(rArgs[0], context, { above })
 
-        if (optionsLength && rArgs.length) return engine.run(content, { ...options, ...rArgs[0] }, { above: [null, context, above] })
-        if (optionsLength) return engine.run(content, options, { above: [null, context, above] })
-        if (!rArgs.length) return engine.run(content, {}, { above: [null, context, above] })
+        let item 
+        if (optionsLength && rArgs.length) item = { ...options, ...rArgs[0] }
+        else if (optionsLength) item = options
+        else if (!rArgs.length) item = {}
+        if (item) return engine.run(content, item, { above: [createBlockParamContext(null, item, options.as), context, above] })
 
         return engine.run(content, rArgs[0], { above })
     },
@@ -219,9 +245,11 @@ engine.addMethod('with', {
         for (const key in options) options[key] = await engine.run(options[key], context, { above })
         if (rArgs.length) rArgs[0] = await engine.run(rArgs[0], context, { above })
 
-        if (optionsLength && rArgs.length) return engine.run(content, { ...options, ...rArgs[0] }, { above: [null, context, above] })
-        if (optionsLength) return engine.run(content, options, { above: [null, context, above] })
-        if (!rArgs.length) return engine.run(content, {}, { above: [null, context, above] })
+        let item 
+        if (optionsLength && rArgs.length) item = { ...options, ...rArgs[0] }
+        else if (optionsLength) item = options
+        else if (!rArgs.length) item = {}
+        if (item) return engine.run(content, item, { above: [createBlockParamContext(null, item, options.as), context, above] })
 
         return engine.run(content, rArgs[0], { above })
     },
@@ -239,10 +267,15 @@ engine.addMethod('with', {
 
         const asyncPrefix = !Constants.isSync(buildState.methods[position]) ? 'await ' : ''
 
-        if (optionsLength && rArgs.length) return asyncPrefix + `methods[${position}]({ ...(${Compiler.buildString(rArgs[0], buildState)}), ...${objectBuild} }, [null, context, above])`
-        if (optionsLength) return asyncPrefix + `methods[${position}](${objectBuild}, [null, context, above])`
+        function makeContext (val) {
+            if (!options.as) return 
+            if (options.as.length === 1) return `{ ${JSON.stringify(options.as[0])}: ${val} }`
+        }
+
+        if (optionsLength && rArgs.length) return asyncPrefix + `methods[${position}]({ ...(${Compiler.buildString(rArgs[0], buildState)}), ...${objectBuild} }, [${makeContext(`{ ...(${Compiler.buildString(rArgs[0], buildState)}), ...${objectBuild} }`)}, context, above])`
+        if (optionsLength) return asyncPrefix + `methods[${position}](${objectBuild}, [${makeContext(objectBuild)}, context, above])`
         if (!rArgs.length) return asyncPrefix + `methods[${position}](null, [null, context, above])`
-        return asyncPrefix + `methods[${position}](${Compiler.buildString(rArgs[0], buildState)}, [null, context, above])`
+        return asyncPrefix + `methods[${position}](${Compiler.buildString(rArgs[0], buildState)}, above)`
     },
     traverse: false,
     deterministic: (data, buildState) => {
@@ -294,7 +327,7 @@ engine.addMethod('obj', {
 engine.methods.object = engine.methods.obj;
 engine.methods.array = engine.methods.arr;
 
-// recursive variable lookup -- takes a perf hit.
+// recursive variable lookup -- takes a perf hit; cannot be optimized
 engine.addMethod('rvar', {
     method: (name, context, above, engine) => {
       if (Array.isArray(name)) name = name[0]
@@ -305,7 +338,7 @@ engine.addMethod('rvar', {
       if (name === '') return context
       if (context && context[firstPart]) return path ? engine.methods.get.method([context[firstPart], path]) : context[firstPart]
       for (let i = 0; i < above.length; i++) {
-        if (above[i] && above[i][firstPart]) return path ? engine.methods.get.method([above[i][firstPart], path], context, above, engine) : above[i][firstPart]
+        if (above[i] && typeof above[i][firstPart] !== 'undefined') return path ? engine.methods.get.method([above[i][firstPart], path], context, above, engine) : above[i][firstPart]
         if (i === above.length -1 && Array.isArray(above[i])) {
           above = above[i]
           i = -1

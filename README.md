@@ -16,7 +16,9 @@ Some of the obvious differences include:
 - ~~The whitespace control is currently not supported in the grammar. (I may add it later) Ex. `{{~foo}}` is not supported.~~
 - Whitespace control is supported, but is handled by a preprocessor and not the grammar. This nuance probably won't affect you, but it's worth mentioning. (Essentially, the whitespace is stripped before the template is parsed)
 - Partials are implemented via a helper rather than dedicated syntax.
-- To avoid additional syntax, `as` is not supported in block expressions, I chose to use hash arguments in `with` instead.
+- ~~To avoid additional syntax, `as` is not supported in block expressions, I chose to use hash arguments in `with` instead.~~
+- `as` is supported in block expressions, however it will incur a performance cost / disable inline optimizations as it will perform a recursive lookup. In spite of the de-optimization, it should still perform quite reasonably.
+- `with` supports hash arguments, which allows for more flexibility in how the block is executed.
 - Supports an (optimized) Interpreted Mode for both synchronous and asynchronous execution; this means you execute templates in browser contexts that disallow `new Function` or `eval`.
 
 I believe these differences are relatively minor and do not impact most use cases, and should be easy to work aorund, but I might iterate on this in the future.

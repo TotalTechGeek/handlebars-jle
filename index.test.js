@@ -121,6 +121,15 @@ ExampleData: {
 'HelloDotSlashName': `Hello {{./name}}!`,
 'HelloThisName': `Hello {{this.name}}!`,
 'HelloName': `Hello {{name}}!`,
+'WithAsBlock': `{{#with name='John' as |person|}}
+{{#with name='Jane' as |otherPerson|}}
+{{person.name}}
+{{otherPerson.name}}
+{{/with}}
+{{/with}}`,
+'EachAsBlock': `{{#each (arr 1 2 3) as |num x|}}
+- {{num}} {{x}}
+{{/each}}`,
     }
 }
 
@@ -176,6 +185,8 @@ ExampleData: {
  * @test #Unescaped, { name: '<b>John</b>' } returns '<b>John</b>'
  * @test #ImplicitBoolean, { account: true } returns 'You have an account!'
  * @test #RecursiveVarTest, { username: 'Bob', user: { identity: { age: 20 }  } }
+ * @test #WithAsBlock returns 'John\nJane\n'
+ * @test #EachAsBlock returns '- 1 0\n- 2 1\n- 3 2\n'
  */
 export function Run(script, data) {
     return compile(script, { recurse: false })(data)
@@ -228,6 +239,8 @@ export function Run(script, data) {
  * @test #ImplicitIterator, { people: [{ name: 'John', age: 12 }, { name: 'Jane', age: 24 }] }
  * @test #Unescaped, { name: '<b>John</b>' } resolves '<b>John</b>'
  * @test #ImplicitBoolean, { account: true } resolves 'You have an account!'
+ * @test #WithAsBlock resolves 'John\nJane\n'
+ * @test #EachAsBlock resolves '- 1 0\n- 2 1\n- 3 2\n'
  */
 export async function RunAsync(script, data) {
     return (await compileAsync(script, { recurse: false }))(data)
@@ -262,6 +275,8 @@ export async function RunAsync(script, data) {
  * @test #Example, #ExampleData returns true
  * @test #AddExampleWithTraversal, { addend: 10 } returns true
  * @test #JSONNonDeterministic, { fullName: 'John Doe', actualAge: 20 } returns true
+ * @test #WithAsBlock returns true
+ * @test #EachAsBlock returns true
  */
 export function RunMethodMatch(script, data) {
     return interpreted(script, { recurse: false })(data) === Run(script, data)
@@ -300,6 +315,8 @@ export function RunMethodMatch(script, data) {
  * @test #Example, #ExampleData resolves true
  * @test #AddExampleWithTraversal, { addend: 10 } resolves true
  * @test #JSONNonDeterministic, { fullName: 'John Doe', actualAge: 20 } resolves true
+ * @test #WithAsBlock resolves true
+ * @test #EachAsBlock resolves true
  */
 export async function RunMethodAsyncMatch(script, data) {
     return (await interpretedAsync(script, { recurse: false })(data)) === (await RunAsync(script, data))
