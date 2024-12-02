@@ -160,10 +160,10 @@ function createBlockParamContext (index, value, as) {
       buildState.methods.eachAsync = eachAsync
 
       // Todo: Maybe we can make a utility for this.
-      let currentState = 'null'
+      let currentState = '{ "@index": x }'
       if (options.as) {
-        if (options.as.length === 1) currentState = `{ ${JSON.stringify(options.as[0])}: i }`
-        if (options.as.length >= 2) currentState = `{ ${JSON.stringify(options.as[0])}: i, ${JSON.stringify(options.as[1])}: x }`
+        if (options.as.length === 1) currentState = `{ "@index": x, ${JSON.stringify(options.as[0])}: i }`
+        if (options.as.length >= 2) currentState = `{ "@index": x, ${JSON.stringify(options.as[0])}: i, ${JSON.stringify(options.as[1])}: x }`
       }
 
       if (async) {
@@ -525,5 +525,5 @@ export function interpretedAsync (logic, options = {}, logicEngine = engine) {
  * @returns {*} A JSON Logic object representing the handlebars template
  */
 export function compileToJSON (str, options = {}) {
-    return parse(preprocess(str), options)
+  return parse(preprocess(str), options)
 }

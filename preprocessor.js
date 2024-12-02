@@ -23,8 +23,13 @@ export function preprocess (str) {
         // Check if the current line is a block helper ONLY
         // regex to check if the line starts with {{# and ends with }}
         if (/^{{~?#.*~?}}$/.test(trimmedLine)) {
+            let prevElseCur = prevElse
+            if (prevElse) {
+                current += '\n' + prevElse 
+                prevElse = false
+            }
             current = current.replace(/{+$/g, i => i.replace(/{/g, '{{ESCAPED_CHAR {}}'))
-            current += ((current && !prevBlockOnly) ? '{{ESCAPED_CHAR \n}}' : '') + trimmedLine 
+            current += ((current && !prevBlockOnly && !prevElseCur) ? '{{ESCAPED_CHAR \n}}' : '') + trimmedLine 
             prevClosing = false
             continue
         }
@@ -32,6 +37,10 @@ export function preprocess (str) {
 
         // Check if the current line is a block closing tag ONLY
         if (/^{{~?\/.*~?}}$/.test(trimmedLine)) {
+            if (prevElse) {
+                current += '\n' + prevElse 
+                prevElse = false
+            }
             if (prevClosing) {
                 current += trimmedLine
                 continue
@@ -43,7 +52,7 @@ export function preprocess (str) {
 
         // Check if the current line is "{{else" and ends with "}}"
         if (/^{{~?(else|\^).*~?}}$/.test(trimmedLine)) {
-            prevElse = trimmedLine
+            prevElse = (prevElse || '') + trimmedLine
             continue
         }
 
