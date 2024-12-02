@@ -17,7 +17,7 @@
 
 
 Content = data:(EscapedElement / Element / Text)* { return { cat: data } }
-EscapedElement = "\\" Element { return text() }
+EscapedElement = "\\" Element { return text().substring(1) } / "\\"
 Element = "{{ESCAPED_CHAR " escapedChar:. "}}" { return escapedChar }
   / startTag:sTag content:Content endTag:eTag {
     if (startTag.name != endTag && startTag.oName != endTag) throw new Error("Expected {{/" + startTag.name + "}} but {{/" + endTag + "}} found.");

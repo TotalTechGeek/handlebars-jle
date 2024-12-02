@@ -141,7 +141,9 @@ ExampleData: {
 {{#each (arr 4 5 6)}}
 {{../@index}} {{../}}
 {{/each}}
-{{/each}}`
+{{/each}}`,
+'EscapedElement': 'Hello \\{{name}}!',
+'EscapedInsideTemplate': "Hello \\n {{name}}!",
     }
 }
 
@@ -202,6 +204,9 @@ ExampleData: {
  * @test #NumbersInVariables, { ELEMENT_001: 'John', ELEMENT_003: 'Doe' } returns 'Hello John let us compute Doe'
  * @test #StaticInternalIndexAccess
  * @test #InternalIndexAccess, { iter: [1, 2, 3] }
+ * @test #EscapedElement returns 'Hello {{name}}!'
+ * @test #EscapedInsideTemplate, { name: 'John' } returns 'Hello \\n John!'
+ * 
  */
 export function Run(script, data) {
     return compile(script, { recurse: false })(data)
