@@ -20,6 +20,7 @@ Some of the obvious differences include:
 - `as` is supported in block expressions, however it will incur a performance cost / disable inline optimizations as it will perform a recursive lookup. In spite of the de-optimization, it should still perform quite reasonably.
 - `with` supports hash arguments, which allows for more flexibility in how the block is executed.
 - Supports an (optimized) Interpreted Mode for both synchronous and asynchronous execution; this means you execute templates in browser contexts that disallow `new Function` or `eval`.
+- If you need to access the index / private context of an above iterator, `../@index` is used instead of `@../index`. I will likely change this to match the original handlebars. This is kind of a niche edge case, but it's worth mentioning.
 
 I believe these differences are relatively minor and do not impact most use cases, and should be easy to work aorund, but I might iterate on this in the future.
 

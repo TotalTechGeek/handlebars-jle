@@ -132,6 +132,16 @@ ExampleData: {
 - {{num}} {{x}}
 {{/each}}`,
 'NumbersInVariables': 'Hello {{ELEMENT_001}} let us compute {{ELEMENT_002 ELEMENT_003}}',
+'StaticInternalIndexAccess': `{{#each (arr 1 2 3)}}
+{{#each (arr 4 5 6)}}
+{{../@index}} {{../}}
+{{/each}}
+{{/each}}`,
+'InternalIndexAccess': `{{#each iter}}
+{{#each (arr 4 5 6)}}
+{{../@index}} {{../}}
+{{/each}}
+{{/each}}`
     }
 }
 
@@ -190,6 +200,8 @@ ExampleData: {
  * @test #WithAsBlock returns 'John\nJane\n'
  * @test #EachAsBlock returns '- 1 0\n- 2 1\n- 3 2\n'
  * @test #NumbersInVariables, { ELEMENT_001: 'John', ELEMENT_003: 'Doe' } returns 'Hello John let us compute Doe'
+ * @test #StaticInternalIndexAccess
+ * @test #InternalIndexAccess, { iter: [1, 2, 3] }
  */
 export function Run(script, data) {
     return compile(script, { recurse: false })(data)
@@ -245,6 +257,8 @@ export function Run(script, data) {
  * @test #WithAsBlock resolves 'John\nJane\n'
  * @test #EachAsBlock resolves '- 1 0\n- 2 1\n- 3 2\n'
  * @test #NumbersInVariables, { ELEMENT_001: 'John', ELEMENT_003: 'Doe' } resolves 'Hello John let us compute Doe'
+ * @test #StaticInternalIndexAccess
+ * @test #InternalIndexAccess, { iter: [1, 2, 3] }
  */
 export async function RunAsync(script, data) {
     return (await compileAsync(script, { recurse: false }))(data)
@@ -282,6 +296,8 @@ export async function RunAsync(script, data) {
  * @test #WithAsBlock returns true
  * @test #EachAsBlock returns true
  * @test #NumbersInVariables, { ELEMENT_001: 'John', ELEMENT_003: 'Doe' } returns true
+ * @test #StaticInternalIndexAccess returns true
+ * @test #InternalIndexAccess, { iter: [1, 2, 3] } returns true
  */
 export function RunMethodMatch(script, data) {
     return interpreted(script, { recurse: false })(data) === Run(script, data)
@@ -323,6 +339,8 @@ export function RunMethodMatch(script, data) {
  * @test #WithAsBlock resolves true
  * @test #EachAsBlock resolves true
  * @test #NumbersInVariables, { ELEMENT_001: 'John', ELEMENT_003: 'Doe' } resolves true
+ * @test #StaticInternalIndexAccess resolves true
+ * @test #InternalIndexAccess, { iter: [1, 2, 3] } resolves true
  */
 export async function RunMethodAsyncMatch(script, data) {
     return (await interpretedAsync(script, { recurse: false })(data)) === (await RunAsync(script, data))

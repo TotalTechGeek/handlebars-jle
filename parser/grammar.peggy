@@ -84,7 +84,7 @@ selfTag = "{{" name:TagName args:Arg* "}}" {
   if (name === "@key" || name === "@index") return wrapEscape({ var: '../index'})
   if (name === '^') return wrapEscape(getVar('else'))
   if (name.startsWith("this.")) return wrapEscape({ var: name.substring(5) })
-  const variableObj = getVar(name.replace(/\.\.\//g, '../../').replace(/\.\.\/this\.?/g, '../'))
+  const variableObj = getVar(name.replace(/\.\.\/@?/g, i => i.includes('@') ? i : '../../').replace(/\.\.\/this\.?/g, '../'))
   if (name in (options.methods || {}) && !args.length) return { if: [variableObj, wrapEscape(variableObj), { [name]: [] }] }
   if (!args.length) return wrapEscape(variableObj); 
   return { [name]: args }
@@ -92,7 +92,7 @@ selfTag = "{{" name:TagName args:Arg* "}}" {
   if (name === '.' || name === "this") return { var: '' }
   if (name === "@index" || name === "@key") return { var: '../index'}
   if (name.startsWith("this.")) return { var: name.substring(5) }
-  return getVar(name.replace(/\.\.\//g, '../../').replace(/\.\.\/this\.?/g, '../'))
+  return getVar(name.replace(/\.\.\/@?/g, i => i.includes('@') ? i : '../../').replace(/\.\.\/this\.?/g, '../'))
 } /  "{{>" _ name:TagName args:Arg* "}}" {
   return { "%partial": [name, ...args] }
 }
@@ -104,7 +104,7 @@ TagName = '../'+ [@$a-zA-Z_.0-9-]* { return text(); }
 Text = ([^{}\\] / "{" !"{" / "}" !"}")+ { return text(); }
 Arg = _ data:(Func / Boolean / Null / Undefined / HashArg / Variable / Number / Str) _ { return data }
 Variable = ([@$a-zA-Z_./-][@$a-zA-Z_./0-9-]*) { 
-  let chars = text().replace(/\.\.\//g, '../../').replace(/\.\.\/this\.?/g, '../')
+  let chars = text().replace(/\.\.\/@?/g, i => i.includes('@') ? i : '../../').replace(/\.\.\/this\.?/g, '../')
   if (chars === "@index" || chars === "@key") return { var: '../index' }
   if (chars === "this" || chars === '.') return { var: '' }
   if (chars.startsWith("this.")) return getVar(chars.substring(5))

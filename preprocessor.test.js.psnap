@@ -1,0 +1,22 @@
+{
+  "execute(#MergeIfs)": {
+    "value": "{{#if a}}{{#if b}}\n{{Hello}}\n{{/if}}{{/if}}",
+    "async": false
+  },
+  "execute(#MergeIfOnElse)": {
+    "value": "{{#if a}}\n{{^}}{{#if b}}\nHello\n{{/if}}{{/if}}",
+    "async": false
+  },
+  "execute(#MergeCloseOnElse)": {
+    "value": "{{#if a}}\nHi\n{{^}}\n{{/if}}",
+    "async": false
+  },
+  "execute(#BranchTest)": {
+    "value": "{{#if a}}\na\n{{else if b}}b\n{{else if c}}c{{else if d}}d\n{{else if e}}e\n{{else if f}}f\n{{else if g}}g\n{{/if}}",
+    "async": false
+  },
+  "execute(#Elimination)": {
+    "value": "{{#if a}}Hi{{/if}}",
+    "async": false
+  }
+}

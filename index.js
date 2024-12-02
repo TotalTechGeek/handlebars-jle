@@ -94,7 +94,7 @@ function each (iterable, func) {
  * reconfigure what values are assigned to.
  */
 function createBlockParamContext (index, value, as) {
-  const val = { index }
+  const val = { index, '@index': index }
   if (!as) return val
   if (as.length === 1) val[as[0]] = value
   else if (as.length >= 2) val[as[0]] = value, val[as[1]] = index
