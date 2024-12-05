@@ -9,6 +9,7 @@ const HashArg = Symbol.for('HashArg');
 // Inspired by escape-html
 // Also, this can be easily overridden for different escaping requirements
 engine.addMethod('escape', (str) => {
+  if (Array.isArray(str)) str = str[0]
   if (str === null) return ''
   if (typeof str !== 'string') return str;
 
@@ -53,7 +54,7 @@ engine.addMethod('escape', (str) => {
   }
 
   return lastIndex !== index ? html + str.substring(lastIndex, index) : html
-}, { deterministic: true, sync: true });
+}, { deterministic: true, sync: true, optimizeUnary: true });
 
 function each (iterable, func) {
     let res = ''
@@ -213,7 +214,7 @@ engine.addMethod('default', {
     deterministic: true
 });
 
-engine.addMethod('lowercase', (args) => args[0].toLowerCase(), { deterministic: true, sync: true });
+engine.addMethod('lowercase', (args) => Array.isArray(args) ? args[0].toLowerCase() : args.toLowerCase(), { deterministic: true, sync: true, optimizeUnary: true });
 engine.addMethod('uppercase', (args) => args[0].toUpperCase(), { deterministic: true, sync: true });
 engine.addMethod('json', (args) => JSON.stringify(args[0]), { deterministic: true, sync: true });
 engine.addMethod('truncate', (args) => args[0].substring(0, args[1]), { deterministic: true, sync: true });
@@ -346,7 +347,7 @@ engine.addMethod('rvar', {
       }
       return null
   }
-}, { deterministic: false, sync: true })
+}, { deterministic: false, sync: true, optimizeUnary: true })
 
 
 const templates = {}

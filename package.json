@@ -1,6 +1,6 @@
 {
   "name": "handlebars-jle",
-  "version": "0.0.24",
+  "version": "0.0.25",
   "module": "./dist/cjs/index.js",
   "main": "./dist/cjs/index.js",
   "type": "module",
@@ -21,7 +21,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "json-logic-engine": "^3.0.4"
+    "json-logic-engine": "^4.0.0"
   },
   "scripts": {
     "prepublish": "npm run build",
