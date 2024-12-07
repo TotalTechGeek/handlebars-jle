@@ -21,7 +21,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "json-logic-engine": "^4.0.0"
+    "json-logic-engine": "^4.0.1"
   },
   "scripts": {
     "prepublish": "npm run build",

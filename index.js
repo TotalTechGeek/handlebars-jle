@@ -167,17 +167,19 @@ function createBlockParamContext (index, value, as) {
         if (options.as.length >= 2) currentState = `{ "@index": x, ${JSON.stringify(options.as[0])}: i, ${JSON.stringify(options.as[1])}: x }`
       }
 
+      const aboveArray = mapper.aboveDetected ? `[${currentState}, context, above]` : 'null'
+
       if (async) {
         if (!Constants.isSync(mapper)) {
           buildState.detectAsync = true
           return `await methods.eachAsync(${selector} || [], (i,x) => methods[${
             buildState.methods.length - 1
-          }](i, x, [${currentState}, context, above]))`
+          }](i, x, ${aboveArray}))`
         }
       }
       return `methods.each(${selector} || [], (i,x) => methods[${
         buildState.methods.length - 1
-      }](i, x, [${currentState}, context, above]))`
+      }](i, x, ${aboveArray}))`
     },
     traverse: false,
     deterministic: engine.methods.map.deterministic
