@@ -95,7 +95,7 @@ function each (iterable, func) {
  * reconfigure what values are assigned to.
  */
 function createBlockParamContext (index, value, as) {
-  const val = { index, '@index': index }
+  const val = { index  }
   if (!as) return val
   if (as.length === 1) val[as[0]] = value
   else if (as.length >= 2) val[as[0]] = value, val[as[1]] = index
@@ -161,10 +161,10 @@ function createBlockParamContext (index, value, as) {
       buildState.methods.eachAsync = eachAsync
 
       // Todo: Maybe we can make a utility for this.
-      let currentState = '{ "@index": x }'
+      let currentState = '{ "index": x }'
       if (options.as) {
-        if (options.as.length === 1) currentState = `{ "@index": x, ${JSON.stringify(options.as[0])}: i }`
-        if (options.as.length >= 2) currentState = `{ "@index": x, ${JSON.stringify(options.as[0])}: i, ${JSON.stringify(options.as[1])}: x }`
+        if (options.as.length === 1) currentState = `{ "index": x, ${JSON.stringify(options.as[0])}: i }`
+        if (options.as.length >= 2) currentState = `{ "index": x, ${JSON.stringify(options.as[0])}: i, ${JSON.stringify(options.as[1])}: x }`
       }
 
       const aboveArray = mapper.aboveDetected ? `[${currentState}, context, above]` : 'null'
@@ -201,20 +201,8 @@ engine.methods['lookup'] = engine.methods['get'];
 engine.addMethod('isArray', (args) => Array.isArray(args[0]), { deterministic: true, sync: true });
 engine.addMethod('type', (args) => typeof args[0], { deterministic: true, sync: true });
 engine.addMethod('log', ([value]) => { console.log(value); return value }, { deterministic: true, sync: true });
-engine.addMethod('max', (args) => Math.max(...args), { deterministic: true, sync: true });
-engine.addMethod('min', (args) => Math.min(...args), { deterministic: true, sync: true });
 
-engine.addMethod('default', {
-    method: (args) => args[0] ?? args[1],
-    compile: (args, buildState) => {
-        if (!Array.isArray(args)) return false
-        let res = Compiler.buildString(args[0], buildState)
-        for (let i = 1; i < args.length; i++) res += ' ?? ' + Compiler.buildString(args[i], buildState)
-        return '(' + res + ')';
-    },
-    traverse: true,
-    deterministic: true
-});
+engine.methods['default'] = engine.methods['??'];
 
 engine.addMethod('lowercase', (args) => Array.isArray(args) ? args[0].toLowerCase() : args.toLowerCase(), { deterministic: true, sync: true, optimizeUnary: true });
 engine.addMethod('uppercase', (args) => args[0].toUpperCase(), { deterministic: true, sync: true });

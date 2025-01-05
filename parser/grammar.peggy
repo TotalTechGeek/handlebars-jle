@@ -9,10 +9,21 @@
 
   function getVar (name) {
     if (blockParams.has(name.split('.')[0])) return { rvar: name }
-    return { [varAccess]: name }
+    if (varAccess === 'rvar') return { rvar: name }
+
+    let upCount = 0
+    while (name.startsWith('../')) {
+      upCount += 1      
+      name = name.substring(3)
+    }
+
+    if (upCount && !name) return { val: [[upCount]] }
+    if (upCount) return { val: [[upCount], ...name.split('.')] }
+    if (name.includes('.')) return { val: name.split('.') }
+    return { val: name }
   }
 
-  const varAccess = options.recurse ? 'rvar' : 'var'
+  const varAccess = options.recurse ? 'rvar' : 'val'
 }
 
 
@@ -52,7 +63,7 @@ Element = "{{ESCAPED_CHAR " escapedChar:. "}}" { return escapedChar }
 
     // Workaround to support implicit iteration / if. 
     if (startTag.name === '$eachOrIf') {
-      const variable = { var: startTag.oName }
+      const variable = { val: startTag.oName.split('.') }
       // If we wanted it to iterate over all Objects - we could do this:
       // { eq: [{ and: [variable, { type: [variable] }] }, 'object'] } 
       return { cat: { if: [{ isArray: [variable] }, { each: [variable, content] }, { if: [variable, content, ''] }] } }
@@ -68,9 +79,9 @@ sTag = "{{#" name:TagName args:Arg* as:asBlock? "}}" '\n'? {
   if ((as||[]).length) {
     if(args[args.length - 1][varAccess] === 'as') args.pop()
     else error('You need to use as when using block arguments')
-    as = as.map(i => i.rvar || i.var)
+    as = as.map(i => i.rvar || i.val)
     if (as.some(i => !i)) error('You need to give a name to each block argument')
-    if (as.some(i => i.includes('.'))) error('You cannot use a dot in your name for block arguments')
+    if (as.some(i => i.includes('.') || Array.isArray(i))) error('You cannot use a dot in your name for block arguments')
     for (const item of as) blockParams.add(item)
     args.push({ '%HashArg': ['as', as], [HashArg]: true })
   }
@@ -80,18 +91,18 @@ sTag = "{{#" name:TagName args:Arg* as:asBlock? "}}" '\n'? {
 
 asBlock = "|" _ names:Arg* _ "|" { return names }
 selfTag = "{{" name:TagName args:Arg* "}}" { 
-  if (name === '.' || name === 'this') return wrapEscape({ var: '' })
-  if (name === "@key" || name === "@index") return wrapEscape({ var: '../index'})
+  if (name === '.' || name === 'this') return wrapEscape({ val: [] })
+  if (name === "@key" || name === "@index") return wrapEscape({ val: [[1], 'index'] })
   if (name === '^') return wrapEscape(getVar('else'))
-  if (name.startsWith("this.")) return wrapEscape({ var: name.substring(5) })
-  const variableObj = getVar(name.replace(/\.\.\/@?/g, i => i.includes('@') ? i : '../../').replace(/\.\.\/this\.?/g, '../'))
+  if (name.startsWith("this.")) return wrapEscape({ val: name.substring(5).split('.') })
+  const variableObj = getVar(name.replace(/\.\.\/@?/g, i => i.includes('@') ? '../' : '../../').replace(/\.\.\/this\.?/g, '../'))
   if (name in (options.methods || {}) && !args.length) return { if: [variableObj, wrapEscape(variableObj), { [name]: [] }] }
   if (!args.length) return wrapEscape(variableObj); 
   return { [name]: args }
 } / "{{{" name:TagName "}}}" {
-  if (name === '.' || name === "this") return { var: '' }
-  if (name === "@index" || name === "@key") return { var: '../index'}
-  if (name.startsWith("this.")) return { var: name.substring(5) }
+  if (name === '.' || name === "this") return { val: [] }
+  if (name === "@index" || name === "@key") return { val: [[1], 'index'] }
+  if (name.startsWith("this.")) return { val: name.substring(5).split('.') }
   return getVar(name.replace(/\.\.\/@?/g, i => i.includes('@') ? i : '../../').replace(/\.\.\/this\.?/g, '../'))
 } /  "{{>" _ name:TagName args:Arg* "}}" {
   return { "%partial": [name, ...args] }
@@ -105,8 +116,8 @@ Text = ([^{}\\] / "{" !"{" / "}" !"}")+ { return text(); }
 Arg = _ data:(Func / Boolean / Null / Undefined / HashArg / Variable / Number / Str) _ { return data }
 Variable = ([@$a-zA-Z_./-][@$a-zA-Z_./0-9-]*) { 
   let chars = text().replace(/\.\.\/@?/g, i => i.includes('@') ? i : '../../').replace(/\.\.\/this\.?/g, '../')
-  if (chars === "@index" || chars === "@key") return { var: '../index' }
-  if (chars === "this" || chars === '.') return { var: '' }
+  if (chars === "@index" || chars === "@key") return { val: [[1], 'index'] }
+  if (chars === "this" || chars === '.') return { val: [] }
   if (chars.startsWith("this.")) return getVar(chars.substring(5))
   return getVar(chars); 
 }
