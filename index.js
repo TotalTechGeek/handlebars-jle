@@ -443,7 +443,7 @@ export function registerPartial (name, template, options = {}) {
  * @param {string} template 
  * @param {{ noEscape?: boolean, recurse?: boolean, engine?: any }} options 
  */
-export function registerPartialInterpreted (name, template, options) {
+export function registerPartialInterpreted (name, template, options = {}) {
   const logic = compileToJSON(template, options)
   const isSync = engine.methods.map[Constants.Sync](logic, { engine })
   templates[name] = (context, above, engine) => (isSync ? engine.fallback || engine : engine).run(logic, context, { above })
@@ -488,7 +488,7 @@ export function compile (str, options = {}) {
  * Compiles a handlebars template string to a function that can be run with JSON data
  * @param {string} str 
  * @param {{ noEscape?: boolean, recurse?: boolean }} options
- * @returns {(data: any) => Promise<string>}
+ * @returns {Promise<(data: any) => Promise<string>>}
  */
 export async function compileAsync (str, options = {}) {
     return engine.build(compileToJSON(str, { ...options, methods: engine.methods }))
