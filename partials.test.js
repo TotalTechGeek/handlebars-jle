@@ -3,21 +3,15 @@ import { AsyncHandlebars, Handlebars } from './index.js'
 
 const hbs = new Handlebars()
 const hbsAsync = new AsyncHandlebars()
+const hbsInterpreted = new Handlebars({ interpreted: true })
+const hbsAsyncInterpreted = new AsyncHandlebars({ interpreted: true })
 
-hbsAsync.interpreted = false
-hbs.interpreted = false
-hbsAsync.register('Static', 'Hello, World!')
-hbsAsync.register('Hello', 'Hello, {{name}}!')
-hbs.register('Static', 'Hello, World!')
-hbs.register('Hello', 'Hello, {{name}}!')
-
-hbsAsync.interpreted = true
-hbs.interpreted = true
-hbsAsync.register('StaticInterpreted', 'Hello, World!')
-hbsAsync.register('HelloInterpreted', 'Hello, {{name}}!')
-hbs.register('StaticInterpreted', 'Hello, World!')
-hbs.register('HelloInterpreted', 'Hello, {{name}}!')
-
+for (const engine of [hbs, hbsAsync, hbsInterpreted, hbsAsyncInterpreted]) {
+    engine.register('Static', 'Hello, World!')
+    engine.register('Hello', 'Hello, {{name}}!')
+    engine.register('StaticInterpreted', 'Hello, World!')
+    engine.register('HelloInterpreted', 'Hello, {{name}}!')
+}
 
 /**
  * @param {string} script 
@@ -32,7 +26,6 @@ hbs.register('HelloInterpreted', 'Hello, {{name}}!')
  * @test '{{>HelloInterpreted name=.}}', 'John' returns 'Hello, John!'
  */
 export function Run(script, data) {
-    hbs.interpreted = false
     return hbs.compile(script, { recurse: false })(data)
 }
 
@@ -48,7 +41,6 @@ export function Run(script, data) {
  * @test '{{>HelloInterpreted name=.}}', 'John' resolves 'Hello, John!'
  */
 export async function RunAsync(script, data) {
-    hbsAsync.interpreted = false
     return hbsAsync.compile(script, { recurse: false })(data)
 }
 
@@ -62,12 +54,8 @@ export async function RunAsync(script, data) {
  * @test '{{>Hello name=.}}', 'John' returns true
  */
 export function RunMethodMatch(script, data) {
-    hbs.interpreted = true 
     const f = hbs.compile(script, { recurse: false })
-
-    hbs.interpreted = false
-    const g = hbs.compile(script, { recurse: false })
-
+    const g = hbsInterpreted.compile(script, { recurse: false })
     return f(data) === g(data)
 }
 
@@ -81,11 +69,7 @@ export function RunMethodMatch(script, data) {
  * @test '{{>HelloInterpreted name=.}}', 'John' resolves true
  */
 export async function RunMethodAsyncMatch(script, data) {
-    hbsAsync.interpreted = true
     const f = hbsAsync.compile(script, { recurse: false })
-
-    hbsAsync.interpreted = false
-    const g = hbsAsync.compile(script, { recurse: false })
-
+    const g = hbsAsyncInterpreted.compile(script, { recurse: false })
     return await f(data) === await g(data)
 }

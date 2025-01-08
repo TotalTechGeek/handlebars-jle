@@ -4,6 +4,9 @@ import { Handlebars, AsyncHandlebars } from "./index.js"
 const hbs = new Handlebars()
 const asyncHbs = new AsyncHandlebars()
 
+const hbsInterpreted = new Handlebars({ interpreted: true })
+const asyncHbsInterpreted = new AsyncHandlebars({ interpreted: true })
+
 asyncHbs.engine.addMethod('fetch', async ([url]) => {
     const response = await fetch(url)
     return response.json()
@@ -12,7 +15,7 @@ asyncHbs.engine.addMethod('fetch', async ([url]) => {
 asyncHbs.engine.addMethod('Woot', () => 'Woot!', { sync: true, deterministic: true })
 asyncHbs.engine.addMethod('ELEMENT_002', ([data]) => data, { deterministic: true, sync: true })
 
-hbs.engine.methods = asyncHbs.engine.methods
+hbsInterpreted.engine.methods = asyncHbsInterpreted.engine.fallback.methods = asyncHbsInterpreted.engine.methods = hbs.engine.methods = asyncHbs.engine.methods
 
 /**
  * @pineapple_import Set 
@@ -310,14 +313,8 @@ export async function RunAsync(script, data) {
  * @test #InternalIndexAccess, { iter: [1, 2, 3] } returns true
  */
 export function RunMethodMatch(script, data) {
-    // Build with interpreted engine
-    hbs.interpreted = true
-    const f = hbs.compile(script, { recurse: false })
-
-    // Build with compiled engine
-    hbs.interpreted = false
+    const f = hbsInterpreted.compile(script, { recurse: false })
     const g = hbs.compile(script, { recurse: false })
-    
     return f(data) === g(data)
 }
 
@@ -361,13 +358,7 @@ export function RunMethodMatch(script, data) {
  * @test #InternalIndexAccess, { iter: [1, 2, 3] } resolves true
  */
 export async function RunMethodAsyncMatch(script, data) {
-    // Build with interpreted engine
-    asyncHbs.interpreted = true
-    const f = asyncHbs.compile(script, { recurse: false })
-
-    // Build with compiled engine
-    asyncHbs.interpreted = false
+    const f = asyncHbsInterpreted.compile(script, { recurse: false })
     const g = asyncHbs.compile(script, { recurse: false })
-
     return (await f(data)) === (await g(data))
 }

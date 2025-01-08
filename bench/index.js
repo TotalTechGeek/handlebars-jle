@@ -31,14 +31,13 @@ const StartupTimePartial = new Date().toISOString()
 
 const hbs = new HBS()
 const hbsAsync = new AHBS()
+const hbsInterpreted = new HBS({ interpreted: true })
 
-hbs.register('Age', AgePartial)
-hbs.register('Test', TestPartial)
-hbs.register('StartupTime', StartupTimePartial)
-
-hbsAsync.register('Age', AgePartial)
-hbsAsync.register('Test', TestPartial)
-hbsAsync.register('StartupTime', StartupTimePartial)
+for (const engine of [hbs, hbsAsync, hbsInterpreted]) {
+  engine.register('Age', AgePartial)
+  engine.register('Test', TestPartial)
+  engine.register('StartupTime', StartupTimePartial)  
+}
 
 Handlebars.registerPartial('Age', AgePartial)
 Handlebars.registerPartial('Test', TestPartial)
@@ -63,20 +62,18 @@ async function runBench (name, script, data, iter = 1e6) {
     const elasticEnd = performance.now()
 
     const jleStart = performance.now()
-    hbs.interpreted = false
     const jle = hbs.compile(script, { noEscape: true })
     for (let i = 0; i < iter; i++) jle(data(i))
     const jleEnd = performance.now()
 
     const jleInterpStart = performance.now()
-    hbs.interpreted = true
-    const jleInterp = hbs.compile(script, { noEscape: true })
+    const jleInterp = hbsInterpreted.compile(script, { noEscape: true })
     for (let i = 0; i < iter; i++) jleInterp(data(i))
     const jleInterpEnd = performance.now()
 
 
     const jleAsyncStart = performance.now()
-    const jleAsync = await hbsAsync.compile(script, { noEscape: true })
+    const jleAsync = hbsAsync.compile(script, { noEscape: true })
     for (let i = 0; i < iter; i++) await jleAsync(data(i))
     const jleAsyncEnd = performance.now()
 
