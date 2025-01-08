@@ -75,7 +75,14 @@ export class AsyncHandlebars {
     const logic = compileToJSON(script, { ...options, methods: this.engine.methods })
     if (this.interpreted) return (data) => this.engine.run(logic, data)
     let method = this.engine.build(logic)
-    return async (data) => (await method)(data)
+    let finished = false
+    return async (data) => {
+      if (!finished) {
+        method = await method
+        finished = true
+      }
+      return method(data)
+    }
   }
 
 
