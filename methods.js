@@ -433,4 +433,6 @@ export function setupEngine (engine) {
           return '""'
       }
   }, { sync: true })
+  
+  return engine
 }

@@ -1,88 +1,94 @@
-import { AsyncLogicEngine, Compiler, Constants } from "json-logic-engine";
+import { AsyncLogicEngine, LogicEngine, Compiler, Constants } from "json-logic-engine";
 import { parse } from './parser/parser.min.js'
 import { preprocess } from "./preprocessor.js";
 import { setupEngine } from "./methods.js";
 
-export const engine = new AsyncLogicEngine();
-setupEngine(engine)
-
 /**
- * Registers a partial that can be run with JSON data, uses the logic compiler
+ * Internal function to register a partial with the engine.
  * @param {string} name 
- * @param {*} template 
- * @param {{ noEscape?: boolean, recurse?: boolean, engine?: any }} options 
+ * @param {string} script 
+ * @param {{ noEscape?: boolean, recurse?: boolean }} options 
+ * @param {LogicEngine | AsyncLogicEngine} engine 
+ * @param {boolean} interpreted 
  */
-export function registerPartial (name, template, options = {}) {
-    const logic = compileToJSON(template, {...options, methods: engine.methods })
-    const selectedEngine = options.engine || engine
-    engine.templates[name] = Compiler.build(logic, { engine, avoidInlineAsync: true, extraArguments: 'above' })
+function registerPartial (name, script, options, engine, interpreted) {
+  if (interpreted) {
+    const logic = compileToJSON(script, options)
+    const isSync = engine.methods.map[Constants.Sync](logic, { engine })
+    engine.templates[name] = (context, above, engine) => (isSync ? engine.fallback || engine : engine).run(logic, context, { above })
+    engine.templates[name][Constants.Sync] = isSync
     engine.templates[name].deterministic = engine.methods.map.deterministic([null, logic], { engine })
-    engine.templates[name].deterministicInline = engine.methods.if.deterministic(logic, { engine: selectedEngine })
-    engine.templates[name][Constants.Sync] = engine.methods.map[Constants.Sync](logic, { engine })
-} 
-
-/**
- * Registers a partial in interpreted mode that can be run with JSON data
- * Avoids CSP Issues
- * @param {string} name 
- * @param {string} template 
- * @param {{ noEscape?: boolean, recurse?: boolean, engine?: any }} options 
- */
-export function registerPartialInterpreted (name, template, options = {}) {
-  const logic = compileToJSON(template, options)
-  const isSync = engine.methods.map[Constants.Sync](logic, { engine })
-  engine.templates[name] = (context, above, engine) => (isSync ? engine.fallback || engine : engine).run(logic, context, { above })
-  engine.templates[name][Constants.Sync] = isSync
+    engine.templates[name].deterministicInline = engine.methods.if.deterministic(logic, { engine })
+    return
+  }
+  const logic = compileToJSON(script, {...options, methods: engine.methods })
+  engine.templates[name] = Compiler.build(logic, { engine, avoidInlineAsync: true, extraArguments: 'above' })
   engine.templates[name].deterministic = engine.methods.map.deterministic([null, logic], { engine })
   engine.templates[name].deterministicInline = engine.methods.if.deterministic(logic, { engine })
+  engine.templates[name][Constants.Sync] = engine.methods.map[Constants.Sync](logic, { engine })
 }
 
 
-/**
- * Compiles a handlebars template string to a function that can be run with JSON data
- * @param {string} str 
- * @param {{ noEscape?: boolean, recurse?: boolean }} options
- * @returns {(data: any) => string}
- */
-export function compile (str, options = {}) {
-    return engine.fallback.build(compileToJSON(str, { ...options, methods: engine.methods }))
+
+export class Handlebars {
+  constructor ({ interpreted = false } = {}) {
+    this.engine = setupEngine(new LogicEngine())
+    this.interpreted = interpreted
+  }
+
+  /**
+   * 
+   * @param {string} script 
+   * @param {{ noEscape?: boolean, recurse?: boolean }} options 
+   * @returns {(data: any) => string}
+   */
+  compile (script, options) {
+    const logic = compileToJSON(script, { ...options, methods: this.engine.methods })
+    if (this.interpreted) return (data) => this.engine.run(logic, data)
+    return this.engine.build(logic)
+  }
+
+  /**
+   * Registers a partial that can be run with JSON data, uses the logic compiler
+   * @param {string} name 
+   * @param {string} script 
+   * @param {{ noEscape?: boolean, recurse?: boolean }} options 
+   */
+  register (name, script, options) {
+    registerPartial(name, script, options, this.engine, this.interpreted)
+  }
 }
 
-/**
- * Compiles a handlebars template string to a function that can be run with JSON data
- * @param {string} str 
- * @param {{ noEscape?: boolean, recurse?: boolean }} options
- * @returns {Promise<(data: any) => Promise<string>>}
- */
-export async function compileAsync (str, options = {}) {
-    return engine.build(compileToJSON(str, { ...options, methods: engine.methods }))
-}
+export class AsyncHandlebars {
+  constructor ({ interpreted = false } = {}) {
+    this.engine = setupEngine(new AsyncLogicEngine())
+    this.interpreted = interpreted
+  }
+
+  /**
+   * Compiles a handlebars template string to a function that can be run with JSON data
+   * @param {string} str 
+   * @param {{ noEscape?: boolean, recurse?: boolean }} options
+   * @returns {(data: any) => Promise<string>}
+   */
+  compile (script, options) {
+    const logic = compileToJSON(script, { ...options, methods: this.engine.methods })
+    if (this.interpreted) return (data) => this.engine.run(logic, data)
+    let method = this.engine.build(logic)
+    return async (data) => (await method)(data)
+  }
 
 
-/**
- * Creates a function that can be run with JSON data to get the result of running the logic.
- * Does not use eval; so it can work in environments where eval is disabled.
- * Avoids CSP issues
- * @param {*} logic 
- * @param {{ noEscape?: boolean, recurse?: boolean }} options
- * @returns {(data: any) => string} The result of running the logic with the data
- */
-export function interpreted (logic, options = {}, logicEngine = engine.fallback) {
-    const parsed = compileToJSON(logic, { ...options, methods: logicEngine.methods })
-    return (data) => logicEngine.run(parsed, data)
-}
 
-/**
- * Creates a function that can be run with JSON data to get the result of running the logic.
- * Does not use eval; so it can work in environments where eval is disabled.
- * Avoids CSP issues
- * @param {*} logic
- * @param {{ noEscape?: boolean, recurse?: boolean }} options
- * @returns {(data: any) => Promise<string>} The result of running the logic with the data
- */
-export function interpretedAsync (logic, options = {}, logicEngine = engine) {
-    const parsed = compileToJSON(logic, { ...options, methods: logicEngine.methods })
-    return data => logicEngine.run(parsed, data)
+  /**
+   * Registers a partial that can be run with JSON data, uses the logic compiler
+   * @param {string} name 
+   * @param {string} script 
+   * @param {{ noEscape?: boolean, recurse?: boolean }} options 
+   */
+  register (name, script, options) {
+    registerPartial(name, script, options, this.engine, this.interpreted)
+  }
 }
 
 /**
