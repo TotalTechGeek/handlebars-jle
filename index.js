@@ -42,7 +42,7 @@ export class Handlebars {
    * @param {{ noEscape?: boolean, recurse?: boolean }} options 
    * @returns {(data: any) => string}
    */
-  compile (script, options) {
+  compile (script, options = {}) {
     const logic = compileToJSON(script, { ...options, methods: this.engine.methods })
     if (this.interpreted) return (data) => this.engine.run(logic, data)
     return this.engine.build(logic)
@@ -54,7 +54,7 @@ export class Handlebars {
    * @param {string} script 
    * @param {{ noEscape?: boolean, recurse?: boolean }} options 
    */
-  register (name, script, options) {
+  register (name, script, options = {}) {
     registerPartial(name, script, options, this.engine, this.interpreted)
   }
 }
@@ -71,7 +71,7 @@ export class AsyncHandlebars {
    * @param {{ noEscape?: boolean, recurse?: boolean }} options
    * @returns {(data: any) => Promise<string>}
    */
-  compile (script, options) {
+  compile (script, options = {}) {
     const logic = compileToJSON(script, { ...options, methods: this.engine.methods })
     if (this.interpreted) return (data) => this.engine.run(logic, data)
     let method = this.engine.build(logic)
@@ -93,7 +93,7 @@ export class AsyncHandlebars {
    * @param {string} script 
    * @param {{ noEscape?: boolean, recurse?: boolean }} options 
    */
-  register (name, script, options) {
+  register (name, script, options = {}) {
     registerPartial(name, script, options, this.engine, this.interpreted)
   }
 }
