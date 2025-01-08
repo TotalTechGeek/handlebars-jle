@@ -71,6 +71,12 @@ async function eachAsync (iterable, func) {
 }
 
 
+/**
+ * Setup the logic engine
+ * @template {import('json-logic-engine').LogicEngine | import('json-logic-engine').AsyncLogicEngine} T
+ * @param {T} engine 
+ * @returns T
+ */
 export function setupEngine (engine) {
     const templates = {}
 
