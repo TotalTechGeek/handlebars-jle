@@ -109,11 +109,12 @@ The `with` block helper has been adjusted a bit from the original Handlebars. It
 You can add helpers by adding methods to the JSON Logic Engine.
 
 ```javascript
-import { engine, compile } from 'handlebars-jle';
-engine.addMethod('addOne', ([a]) => a + 1, { sync: true, deterministic: true });
+import { Handlebars } from 'handlebars-jle';
 
+const hbs = new Handlebars();
+hbs.engine.addMethod('addOne', ([a]) => a + 1, { sync: true, deterministic: true });
 
-const template = compile('{{addOne age}}');
+const template = hbs.compile('{{addOne age}}');
 
 template({ age: 5 }); // 6
 template({ age: 10 }); // 11
@@ -124,15 +125,16 @@ If your method is synchronous and deterministic (same input always produces the 
 Here is a more interesting example, using async support:
 
 ```javascript
-import { engine, compileAsync } from 'handlebars-jle';
+import { AsyncHandlebars } from 'handlebars-jle';
 
+const hbs = new AsyncHandlebars();
 
-engine.addMethod('fetch', async ([url]) => {
+hbs.engine.addMethod('fetch', async ([url]) => {
     const response = await fetch(url)
     return response.json()
 })
 
-const template = await compileAsync(`{{#each (fetch 'https://jsonplaceholder.typicode.com/users')}}
+const template = hbs.compile(`{{#each (fetch 'https://jsonplaceholder.typicode.com/users')}}
 @{{username}} - {{name}}
 {{/each}}`)
 
@@ -158,50 +160,50 @@ Would produce:
 
 This module supports both a compiled mode and an "interpreted" mode.
 
-The four main methods to used to build a function are:
-- `compile`
-- `compileAsync`
-- `interpreted`
-- `interpretedAsync`
+The compiled mode is faster, but the interpreted mode is more flexible and can be used in environments that disallow `eval` or `new Function`.
+
 
 For example:
 
 ```javascript
-const hello = interpreted('Hello, {{name}}!')
-const helloAsync = interpretedAsync('Hello, {{name}}!')
-const helloCompiled = compile('Hello, {{name}}!')
-const helloAsyncCompiled = await compileAsync('Hello, {{name}}!) // compileAsync is a Promise that returns a function; it can pre-process logic and inline it. 
+
+const { Handlebars, AsyncHandlebars } = require('handlebars-jle');
+
+const hbs = new Handlebars();
+const hbsAsync = new AsyncHandlebars();
+const hbsInterpreted = new Handlebars({ interpreted: true });
+const hbsAsyncInterpreted = new AsyncHandlebars({ interpreted: true });
+
+const hello = hbs.compile('Hello, {{name}}!')
+const helloAsync = hbsAsync.compile('Hello, {{name}}!')
+const helloInterpreted = hbsInterpreted.compile('Hello, {{name}}!')
+const helloAsyncInterpreted = hbsAsyncInterpreted.compile('Hello, {{name}}!) 
 ```
 
 Any of these can now be run with:
 ```javascript
 hello('Jesse') // Hello, Jesse!
 helloAsync('Bob') // Promise<'Hello, Bob!'>
-helloCompiled('Steve') // Hello, Steve!
-helloAsyncCompiled('Tara') // Promise<Hello, Tara!>
+helloInterpreted('Steve') // Hello, Steve!
+helloAsyncInterpreted('Tara') // Promise<Hello, Tara!>
 ```
 
-If you have a CSP Policy that prevents you from using `eval` or `new Function`, you must use `interpreted` or `interpretedAsync` over `compile`. 
-
-If you have no async helpers to add to your templates, it's strongly recommended you use the synchronous methods. 
+If you have no async helpers to add to your templates, it's strongly recommended you use the synchronous class.
 
 While the compiler / optimizer will make the execution fully synchronous if everything in the template is not async, there is still some overhead in JavaScript engines that slow it down a bit when packing it into a promise, so it should only be used if you've added async helpers to your engine you'd like to use.
 
 
 ### Adding Partials
 
-You can add partials by registering, note that there are two methods to register partials,
-- `registerPartial` (This is the default method)
-- `registerPartialInterpreted` (This is the interpreted method, to be used to avoid CSP Policies)
-
-Both can technically be used by either `compile` or `interpreted`, but it's recommended to use `registerPartial` with `compile` and `registerPartialInterpreted` with `interpreted`.
+You can add partials by using `register`, 
 
 ```javascript
-import { compile, registerPartial } from 'handlebars-jle';
+import { Handlebars } from 'handlebars-jle';
 
-registerPartial('greeting', 'Hello, {{name}}!')
+const hbs = new Handlebars();
+hbs.register('greeting', 'Hello, {{name}}!')
 
-const template = compile('{{>greeting name="Jesse"}}');
+const template = hbs.compile('{{>greeting name="Jesse"}}');
 
 template(); // Hello, Jesse!
 ```
@@ -209,11 +211,12 @@ template(); // Hello, Jesse!
 Of some note, partials that can be fully evaluated and inlined will be! In the above case, since `greeting` receives all of the information it needs as constants, it will fully evaluate the partial and inline it into the template.
 
 ```javascript
-import { interpreted, registerPartialInterpreted } from 'handlebars-jle';
+import { Handlebars } from 'handlebars-jle';
 
-registerPartialInterpreted('greeting', 'Hello, {{name}}!')
+const hbs = new Handlebars({ interpreted: true });
+hbs.register('greeting', 'Hello, {{name}}!')
 
-const template = interpreted('{{>greeting name="Jesse"}}');
+const template = hbs.compile('{{>greeting name="Jesse"}}');
 
 template(); // Hello, Jesse!
 ```
