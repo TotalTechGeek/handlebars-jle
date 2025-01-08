@@ -1,6 +1,6 @@
 import Elastic from 'kbn-handlebars'
 import Handlebars from 'handlebars'
-import { compile, interpreted, compileAsync, registerPartial } from '../index.js'
+import { Handlebars as HBS, AsyncHandlebars as AHBS } from '../index.js'
 import { Cases } from '../index.test.js'
 
 const cases = Cases()
@@ -29,10 +29,16 @@ const AgePartial = '{{#unless age}}You have no age{{^}}You have an age{{/unless}
 const TestPartial = 'Hello {{name}}!'
 const StartupTimePartial = new Date().toISOString()
 
-registerPartial('Age', AgePartial)
-registerPartial('Test', TestPartial)
-registerPartial('StartupTime', StartupTimePartial)
+const hbs = new HBS()
+const hbsAsync = new AHBS()
 
+hbs.register('Age', AgePartial)
+hbs.register('Test', TestPartial)
+hbs.register('StartupTime', StartupTimePartial)
+
+hbsAsync.register('Age', AgePartial)
+hbsAsync.register('Test', TestPartial)
+hbsAsync.register('StartupTime', StartupTimePartial)
 
 Handlebars.registerPartial('Age', AgePartial)
 Handlebars.registerPartial('Test', TestPartial)
@@ -41,7 +47,6 @@ Handlebars.registerPartial('StartupTime', StartupTimePartial)
 Elastic.default.registerPartial('Age', AgePartial)
 Elastic.default.registerPartial('Test', TestPartial)
 Elastic.default.registerPartial('StartupTime', StartupTimePartial)
-
 
 
 const simpleTemplate = 'Hello, {{name}}!'
@@ -58,18 +63,20 @@ async function runBench (name, script, data, iter = 1e6) {
     const elasticEnd = performance.now()
 
     const jleStart = performance.now()
-    const jle = compile(script, { noEscape: true })
+    hbs.interpreted = false
+    const jle = hbs.compile(script, { noEscape: true })
     for (let i = 0; i < iter; i++) jle(data(i))
     const jleEnd = performance.now()
 
     const jleInterpStart = performance.now()
-    const jleInterp = interpreted(script, { noEscape: true })
+    hbs.interpreted = true
+    const jleInterp = hbs.compile(script, { noEscape: true })
     for (let i = 0; i < iter; i++) jleInterp(data(i))
     const jleInterpEnd = performance.now()
 
 
     const jleAsyncStart = performance.now()
-    const jleAsync = await compileAsync(script, { noEscape: true })
+    const jleAsync = await hbsAsync.compile(script, { noEscape: true })
     for (let i = 0; i < iter; i++) await jleAsync(data(i))
     const jleAsyncEnd = performance.now()
 

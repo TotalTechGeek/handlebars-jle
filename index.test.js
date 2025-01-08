@@ -1,13 +1,18 @@
 
-import { compile, compileAsync, interpreted, interpretedAsync, engine } from "./index.js"
+import { Handlebars, AsyncHandlebars } from "./index.js"
 
-engine.addMethod('fetch', async ([url]) => {
+const hbs = new Handlebars()
+const asyncHbs = new AsyncHandlebars()
+
+asyncHbs.engine.addMethod('fetch', async ([url]) => {
     const response = await fetch(url)
     return response.json()
 }, { deterministic: true })
 
-engine.addMethod('Woot', () => 'Woot!', { sync: true, deterministic: true })
-engine.addMethod('ELEMENT_002', ([data]) => data, { deterministic: true, sync: true })
+asyncHbs.engine.addMethod('Woot', () => 'Woot!', { sync: true, deterministic: true })
+asyncHbs.engine.addMethod('ELEMENT_002', ([data]) => data, { deterministic: true, sync: true })
+
+hbs.engine.methods = asyncHbs.engine.methods
 
 /**
  * @pineapple_import Set 
@@ -209,7 +214,7 @@ ExampleData: {
  * 
  */
 export function Run(script, data) {
-    return compile(script, { recurse: false })(data)
+    return hbs.compile(script, { recurse: false })(data)
 }
 
 
@@ -266,7 +271,7 @@ export function Run(script, data) {
  * @test #InternalIndexAccess, { iter: [1, 2, 3] }
  */
 export async function RunAsync(script, data) {
-    return (await compileAsync(script, { recurse: false }))(data)
+    return (asyncHbs.compile(script, { recurse: false }))(data)
 }
 
 
@@ -305,7 +310,15 @@ export async function RunAsync(script, data) {
  * @test #InternalIndexAccess, { iter: [1, 2, 3] } returns true
  */
 export function RunMethodMatch(script, data) {
-    return interpreted(script, { recurse: false })(data) === Run(script, data)
+    // Build with interpreted engine
+    hbs.interpreted = true
+    const f = hbs.compile(script, { recurse: false })
+
+    // Build with compiled engine
+    hbs.interpreted = false
+    const g = hbs.compile(script, { recurse: false })
+    
+    return f(data) === g(data)
 }
 
 
@@ -348,5 +361,13 @@ export function RunMethodMatch(script, data) {
  * @test #InternalIndexAccess, { iter: [1, 2, 3] } resolves true
  */
 export async function RunMethodAsyncMatch(script, data) {
-    return (await interpretedAsync(script, { recurse: false })(data)) === (await RunAsync(script, data))
+    // Build with interpreted engine
+    asyncHbs.interpreted = true
+    const f = asyncHbs.compile(script, { recurse: false })
+
+    // Build with compiled engine
+    asyncHbs.interpreted = false
+    const g = asyncHbs.compile(script, { recurse: false })
+
+    return (await f(data)) === (await g(data))
 }
