@@ -31,9 +31,16 @@ function registerPartial (name, script, options, engine, interpreted) {
 
 
 export class Handlebars {
+  #interpreted;
+
   constructor ({ interpreted = false } = {}) {
+    this.#interpreted = interpreted
+    /**
+     * The logic engine
+     * @type {import('json-logic-engine').LogicEngine}
+     * @public
+     */
     this.engine = setupEngine(new LogicEngine())
-    this.interpreted = interpreted
   }
 
   /**
@@ -44,7 +51,7 @@ export class Handlebars {
    */
   compile (script, options = {}) {
     const logic = compileToJSON(script, { ...options, methods: this.engine.methods })
-    if (this.interpreted) return (data) => this.engine.run(logic, data)
+    if (this.#interpreted) return (data) => this.engine.run(logic, data)
     return this.engine.build(logic)
   }
 
@@ -55,14 +62,23 @@ export class Handlebars {
    * @param {{ noEscape?: boolean, recurse?: boolean }} options 
    */
   register (name, script, options = {}) {
-    registerPartial(name, script, options, this.engine, this.interpreted)
+    registerPartial(name, script, options, this.engine, this.#interpreted)
   }
 }
 
 export class AsyncHandlebars {
+  #interpreted;
+
+
+
   constructor ({ interpreted = false } = {}) {
+    this.#interpreted = interpreted
+    /**
+     * The async logic engine
+     * @type {import('json-logic-engine').AsyncLogicEngine}
+     * @public
+     */
     this.engine = setupEngine(new AsyncLogicEngine())
-    this.interpreted = interpreted
   }
 
   /**
@@ -73,7 +89,7 @@ export class AsyncHandlebars {
    */
   compile (script, options = {}) {
     const logic = compileToJSON(script, { ...options, methods: this.engine.methods })
-    if (this.interpreted) return (data) => this.engine.run(logic, data)
+    if (this.#interpreted) return (data) => this.engine.run(logic, data)
     let method = this.engine.build(logic)
     let finished = false
     return async (data) => {
@@ -94,7 +110,7 @@ export class AsyncHandlebars {
    * @param {{ noEscape?: boolean, recurse?: boolean }} options 
    */
   register (name, script, options = {}) {
-    registerPartial(name, script, options, this.engine, this.interpreted)
+    registerPartial(name, script, options, this.engine, this.#interpreted)
   }
 }
 
