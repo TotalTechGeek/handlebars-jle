@@ -12,3 +12,5 @@ perf*.js
 experiments/
 parser/
 /index.js
+/methods.js
+/preprocessor.js
