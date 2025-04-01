@@ -109,9 +109,9 @@ selfTag = "{{" name:TagName args:Arg* "}}" {
 }
 
 eTag = _ "{{/" name:TagName "}}" { return name; }
-TagName = '../'+ [@$a-zA-Z_.0-9-]* { return text(); }
-  / './' [@$a-zA-Z_.0-9-]+ { return text().substring(2); }
-  / ([@$a-zA-Z_.-][@$a-zA-Z_.0-9-]* / "^") { return text(); }
+TagName = '../'+ [@$a-zA-Z_.0-9-\:]* { return text(); }
+  / './' [@$a-zA-Z_.0-9-\:]+ { return text().substring(2); }
+  / ([@$a-zA-Z_.-][@$a-zA-Z_.0-9-\:]* / "^") { return text(); }
 Text = ([^{}\\] / "{" !"{" / "}" !"}")+ { return text(); }
 Arg = _ data:(Func / Boolean / Null / Undefined / HashArg / Variable / Number / Str) _ { return data }
 Variable = ([@$a-zA-Z_./-][@$a-zA-Z_./0-9-]*) { 

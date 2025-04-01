@@ -1,5 +1,5 @@
 
-import { Handlebars, AsyncHandlebars } from "./index.js"
+import { AsyncHandlebars, Handlebars } from "./index.js"
 
 const hbs = new Handlebars()
 const asyncHbs = new AsyncHandlebars()
@@ -61,6 +61,7 @@ export function Cases () {
 - {{@index}}: {{this}}
 {{/each}}`,
 'Person': `{{name}} is {{age}} years old.`,
+'TagWithColon': `{{some:tag}}`,
 'SimpleIf': `{{#if account}}You have an account!{{else}}You have no account!{{/if}}`,
 'SimpleUnless': `{{#unless account}}You have no account!{{else}}You have an account!{{/unless}}`,
 'NestedIf': `{{~#if account~}}
@@ -176,6 +177,7 @@ ExampleData: {
  * @test #EachWithIndex, { iterator: Map({ John: 12, Susan: 24 }) }
  * @test #Person, { name: 'John', age: 12 }
  * @test #Person, { name: 'Jane', age: 24 }
+ * @test #TagWithColon, { "some:tag": 'John' }
  * @test #SimpleIf, { account: true }
  * @test #SimpleIf, { account: false }
  * @test #SimpleUnless, { account: true }
@@ -237,6 +239,7 @@ export function Run(script, data) {
  * @test #EachWithIndex, { iterator: Map({ John: 12, Susan: 24 }) }
  * @test #Person, { name: 'John', age: 12 }
  * @test #Person, { name: 'Jane', age: 24 }
+ * @test #TagWithColon, { "some:tag": 'John' }
  * @test #SimpleIf, { account: true }
  * @test #SimpleIf, { account: false }
  * @test #NestedIf, { account: true, age: 12 }
@@ -292,6 +295,7 @@ export async function RunAsync(script, data) {
  * @test #EachWithIndex, { iterator: Map({ John: 12, Susan: 24 }) } returns true
  * @test #Person, { name: 'John', age: 12 } returns true
  * @test #Person, { name: 'Jane', age: 24 } returns true
+ * @test #TagWithColon, { "some:tag": 'John' } returns true
  * @test #SimpleIf, { account: true } returns true
  * @test #SimpleIf, { account: false } returns true
  * @test #NestedIf, { account: true, age: 12 } returns true
@@ -333,6 +337,7 @@ export function RunMethodMatch(script, data) {
  * @test #EachWithIndex, { iterator: Map({ John: 12, Susan: 24 }) } resolves true
  * @test #Person, { name: 'John', age: 12 } resolves true
  * @test #Person, { name: 'Jane', age: 24 } resolves true
+ * @test #TagWithColon, { "some:tag": 'John' } resolves true
  * @test #SimpleIf, { account: true } resolves true
  * @test #SimpleIf, { account: false } resolves true
  * @test #NestedIf, { account: true, age: 12 } resolves true
