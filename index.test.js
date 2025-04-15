@@ -153,6 +153,8 @@ ExampleData: {
 {{/each}}`,
 'EscapedElement': 'Hello \\{{name}}!',
 'EscapedInsideTemplate': "Hello \\n {{name}}!",
+'EscapedJSON': `{{json (obj name='<b>John</b>' age=12)}}`,
+'UnescapedJSON': `{{{json (obj name='<b>John</b>' age=12)}}}`,
     }
 }
 
@@ -216,7 +218,8 @@ ExampleData: {
  * @test #InternalIndexAccess, { iter: [1, 2, 3] }
  * @test #EscapedElement returns 'Hello {{name}}!'
  * @test #EscapedInsideTemplate, { name: 'John' } returns 'Hello \\n John!'
- * 
+ * @test #EscapedJSON returns '{"name":"<b>John</b>","age":12}'
+ * @test #UnescapedJSON returns '{"name":"<b>John</b>","age":12}'
  */
 export function Run(script, data) {
     return hbs.compile(script, { recurse: false })(data)
@@ -275,6 +278,8 @@ export function Run(script, data) {
  * @test #NumbersInVariables, { ELEMENT_001: 'John', ELEMENT_003: 'Doe' } resolves 'Hello John let us compute Doe'
  * @test #StaticInternalIndexAccess
  * @test #InternalIndexAccess, { iter: [1, 2, 3] }
+ * @test #EscapedJSON resolves '{"name":"<b>John</b>","age":12}'
+ * @test #UnescapedJSON resolves '{"name":"<b>John</b>","age":12}'
  */
 export async function RunAsync(script, data) {
     return (asyncHbs.compile(script, { recurse: false }))(data)

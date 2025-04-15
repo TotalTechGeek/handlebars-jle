@@ -99,11 +99,12 @@ selfTag = "{{" name:TagName args:Arg* "}}" {
   if (name in (options.methods || {}) && !args.length) return { if: [variableObj, wrapEscape(variableObj), { [name]: [] }] }
   if (!args.length) return wrapEscape(variableObj); 
   return { [name]: args }
-} / "{{{" name:TagName "}}}" {
+} / "{{{" name:TagName args:Arg* "}}}" {
   if (name === '.' || name === "this") return { val: [] }
   if (name === "@index" || name === "@key") return { val: [[1], 'index'] }
   if (name.startsWith("this.")) return { val: name.substring(5).split('.') }
-  return getVar(name.replace(/\.\.\/@?/g, i => i.includes('@') ? i : '../../').replace(/\.\.\/this\.?/g, '../'))
+  if (!args.length) return getVar(name.replace(/\.\.\/@?/g, i => i.includes('@') ? i : '../../').replace(/\.\.\/this\.?/g, '../'))
+  return { [name]: args }
 } /  "{{>" _ name:TagName args:Arg* "}}" {
   return { "%partial": [name, ...args] }
 }
