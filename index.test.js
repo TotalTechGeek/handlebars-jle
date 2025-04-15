@@ -153,6 +153,8 @@ ExampleData: {
 {{/each}}`,
 'EscapedElement': 'Hello \\{{name}}!',
 'EscapedInsideTemplate': "Hello \\n {{name}}!",
+'EscapedJSON': `{{json (obj name='<b>John</b>' age=12)}}`,
+'UnescapedJSON': `{{{json (obj name='<b>John</b>' age=12)}}}`,
     }
 }
 
@@ -199,9 +201,9 @@ ExampleData: {
  * @test #MatchHash, { x: 'c' } returns '3'
  * @test #EmptyWith, {} returns 'Hi Bob!'
  * @test #Example, #ExampleData
- * @test #SimpleJSON returns '{"name":"John","age":12}'
- * @test #SimpleJSON2 returns '{"name":"John","age":12}'
- * @test #JSONNonDeterministic, { fullName: 'John Doe', actualAge: 20 } returns '{"name":"John Doe","age":20,"test":3}'
+ * @test #SimpleJSON returns '{&quot;name&quot;:&quot;John&quot;,&quot;age&quot;:12}'
+ * @test #SimpleJSON2 returns '{&quot;name&quot;:&quot;John&quot;,&quot;age&quot;:12}'
+ * @test #JSONNonDeterministic, { fullName: 'John Doe', actualAge: 20 } returns '{&quot;name&quot;:&quot;John Doe&quot;,&quot;age&quot;:20,&quot;test&quot;:3}'
  * @test #AddExampleWithTraversal, { addend: 10 }
  * @test #ImplicitIterator, { people: [{ name: 'John', age: 12 }, { name: 'Jane', age: 24 }] }
  * @test #Fallthrough returns 'Woot!'
@@ -216,7 +218,8 @@ ExampleData: {
  * @test #InternalIndexAccess, { iter: [1, 2, 3] }
  * @test #EscapedElement returns 'Hello {{name}}!'
  * @test #EscapedInsideTemplate, { name: 'John' } returns 'Hello \\n John!'
- * 
+ * @test #EscapedJSON returns '{&quot;name&quot;:&quot;&lt;b&gt;John&lt;/b&gt;&quot;,&quot;age&quot;:12}' 
+ * @test #UnescapedJSON returns '{"name":"<b>John</b>","age":12}'
  */
 export function Run(script, data) {
     return hbs.compile(script, { recurse: false })(data)
@@ -263,9 +266,9 @@ export function Run(script, data) {
  * @test #FetchIterator, { items: [1, 2] }
  * @test #FetchIterator, { items: { a: 1 } }
  * @test #Example, #ExampleData
- * @test #SimpleJSON resolves '{"name":"John","age":12}'
- * @test #SimpleJSON2 resolves '{"name":"John","age":12}'
- * @test #JSONNonDeterministic, { fullName: 'John Doe', actualAge: 20 } resolves '{"name":"John Doe","age":20,"test":3}'
+ * @test #SimpleJSON resolves '{&quot;name&quot;:&quot;John&quot;,&quot;age&quot;:12}'
+ * @test #SimpleJSON2 resolves '{&quot;name&quot;:&quot;John&quot;,&quot;age&quot;:12}'
+ * @test #JSONNonDeterministic, { fullName: 'John Doe', actualAge: 20 } resolves '{&quot;name&quot;:&quot;John Doe&quot;,&quot;age&quot;:20,&quot;test&quot;:3}'
  * @test #AddExampleWithTraversal, { addend: 10 }
  * @test #ImplicitIterator, { people: [{ name: 'John', age: 12 }, { name: 'Jane', age: 24 }] }
  * @test #Unescaped, { name: '<b>John</b>' } resolves '<b>John</b>'
@@ -275,6 +278,8 @@ export function Run(script, data) {
  * @test #NumbersInVariables, { ELEMENT_001: 'John', ELEMENT_003: 'Doe' } resolves 'Hello John let us compute Doe'
  * @test #StaticInternalIndexAccess
  * @test #InternalIndexAccess, { iter: [1, 2, 3] }
+ * @test #EscapedJSON resolves '{&quot;name&quot;:&quot;&lt;b&gt;John&lt;/b&gt;&quot;,&quot;age&quot;:12}'
+ * @test #UnescapedJSON resolves '{"name":"<b>John</b>","age":12}'
  */
 export async function RunAsync(script, data) {
     return (asyncHbs.compile(script, { recurse: false }))(data)
