@@ -93,11 +93,12 @@ asBlock = "|" _ names:Arg* _ "|" { return names }
 selfTag = "{{" name:TagName args:Arg* "}}" { 
   if (name === '.' || name === 'this') return wrapEscape({ val: [] })
   if (name === "@key" || name === "@index") return wrapEscape({ val: [[1], 'index'] })
-  if (name === '^') return { else: true }
+  if (name === '^') return wrapEscape(getVar('else'))
   if (name.startsWith("this.")) return wrapEscape({ val: name.substring(5).split('.') })
   const variableObj = getVar(name.replace(/\.\.\/@?/g, i => i.includes('@') ? '../' : '../../').replace(/\.\.\/this\.?/g, '../'))
   if (name in (options.methods || {}) && !args.length) return { if: [variableObj, wrapEscape(variableObj), { [name]: [] }] }
   if (!args.length) return wrapEscape(variableObj); 
+  if (name === 'else') return { [name]: args }
   return wrapEscape({ [name]: args })
 } / "{{{" name:TagName args:Arg* "}}}" {
   if (name === '.' || name === "this") return { val: [] }

@@ -86,8 +86,6 @@ export function setupEngine (engine) {
         engine.fallback.methods = engine.methods
     }
 
-    engine.addMethod('else', () => true, { deterministic: true, sync: true });
-
     // Inspired by escape-html
     // Also, this can be easily overridden for different escaping requirements
     engine.addMethod('escape', (str) => {
