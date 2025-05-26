@@ -242,5 +242,29 @@
   "RunAsync(#TagWithColon, { \"some:tag\": 'John' })": {
     "value": "John",
     "async": true
+  },
+  "Run(#SimpleIf, { account: {} })": {
+    "value": "You have no account!",
+    "async": false
+  },
+  "Run(#SimpleIf, { account: [] })": {
+    "value": "You have no account!",
+    "async": false
+  },
+  "RunAsync(#SimpleIf, { account: {} })": {
+    "value": "You have no account!",
+    "async": true
+  },
+  "RunAsync(#SimpleIf, { account: [] })": {
+    "value": "You have no account!",
+    "async": true
+  },
+  "Run(#SimpleIf, { account: Set([]) })": {
+    "value": "You have no account!",
+    "async": false
+  },
+  "RunAsync(#SimpleIf, { account: Set([]) })": {
+    "value": "You have no account!",
+    "async": true
   }
 }

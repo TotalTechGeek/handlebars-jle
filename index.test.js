@@ -18,7 +18,7 @@ asyncHbs.engine.addMethod('ELEMENT_002', ([data]) => data, { deterministic: true
 hbsInterpreted.engine.methods = asyncHbsInterpreted.engine.fallback.methods = asyncHbsInterpreted.engine.methods = hbs.engine.methods = asyncHbs.engine.methods
 
 /**
- * @pineapple_import Set 
+ * @pineapple_import Set
  */
 export function createSet (...arr) {
     return new Set(arr)
@@ -160,7 +160,7 @@ ExampleData: {
 
 
 /**
- * @param {string} script 
+ * @param {string} script
  * @test #HelloDot, 'John' returns 'Hello John!'
  * @test #HelloDotSlashName, { name: 'John' } returns 'Hello John!'
  * @test #HelloThisName, { name: 'John' } returns 'Hello John!'
@@ -182,6 +182,9 @@ ExampleData: {
  * @test #TagWithColon, { "some:tag": 'John' }
  * @test #SimpleIf, { account: true }
  * @test #SimpleIf, { account: false }
+ * @test #SimpleIf, { account: {} }
+ * @test #SimpleIf, { account: [] }
+ * @test #SimpleIf, { account: Set([]) }
  * @test #SimpleUnless, { account: true }
  * @test #SimpleUnless, { account: false }
  * @test #NestedIf, { account: true, age: 12 }
@@ -218,7 +221,7 @@ ExampleData: {
  * @test #InternalIndexAccess, { iter: [1, 2, 3] }
  * @test #EscapedElement returns 'Hello {{name}}!'
  * @test #EscapedInsideTemplate, { name: 'John' } returns 'Hello \\n John!'
- * @test #EscapedJSON returns '{&quot;name&quot;:&quot;&lt;b&gt;John&lt;/b&gt;&quot;,&quot;age&quot;:12}' 
+ * @test #EscapedJSON returns '{&quot;name&quot;:&quot;&lt;b&gt;John&lt;/b&gt;&quot;,&quot;age&quot;:12}'
  * @test #UnescapedJSON returns '{"name":"<b>John</b>","age":12}'
  */
 export function Run(script, data) {
@@ -227,7 +230,7 @@ export function Run(script, data) {
 
 
 /**
- * @param {string} script 
+ * @param {string} script
  * @test #SimpleEach, { iterator: [1, 2, 3] }
  * @test #SimpleEach, { iterator: ['a', 'b', 'c'] }
  * @test #SimpleEach, { iterator: ['a', 'b', 'c', 'd'] }
@@ -245,6 +248,9 @@ export function Run(script, data) {
  * @test #TagWithColon, { "some:tag": 'John' }
  * @test #SimpleIf, { account: true }
  * @test #SimpleIf, { account: false }
+ * @test #SimpleIf, { account: {} }
+ * @test #SimpleIf, { account: [] }
+ * @test #SimpleIf, { account: Set([]) }
  * @test #NestedIf, { account: true, age: 12 }
  * @test #NestedIf, { account: false, age: 12 }
  * @test #NestedIf, { account: true, age: 18 }
@@ -287,7 +293,7 @@ export async function RunAsync(script, data) {
 
 
 /**
- * @param {string} script 
+ * @param {string} script
  * @test #SimpleEach, { iterator: [1, 2, 3] } returns true
  * @test #SimpleEach, { iterator: ['a', 'b', 'c'] } returns true
  * @test #SimpleEach, { iterator: ['a', 'b', 'c', 'd'] } returns true
@@ -303,6 +309,9 @@ export async function RunAsync(script, data) {
  * @test #TagWithColon, { "some:tag": 'John' } returns true
  * @test #SimpleIf, { account: true } returns true
  * @test #SimpleIf, { account: false } returns true
+ * @test #SimpleIf, { account: {} } returns true
+ * @test #SimpleIf, { account: [] } returns true
+ * @test #SimpleIf, { account: Set([]) } returns true
  * @test #NestedIf, { account: true, age: 12 } returns true
  * @test #NestedIf, { account: false, age: 12 } returns true
  * @test #NestedIf, { account: true, age: 18 } returns true
@@ -329,7 +338,7 @@ export function RunMethodMatch(script, data) {
 
 
 /**
- * @param {string} script 
+ * @param {string} script
  * @test #SimpleEach, { iterator: [1, 2, 3] } resolves true
  * @test #SimpleEach, { iterator: ['a', 'b', 'c'] } resolves true
  * @test #SimpleEach, { iterator: ['a', 'b', 'c', 'd'] } resolves true
@@ -345,6 +354,9 @@ export function RunMethodMatch(script, data) {
  * @test #TagWithColon, { "some:tag": 'John' } resolves true
  * @test #SimpleIf, { account: true } resolves true
  * @test #SimpleIf, { account: false } resolves true
+ * @test #SimpleIf, { account: {} } resolves true
+ * @test #SimpleIf, { account: [] } resolves true
+ * @test #SimpleIf, { account: Set([]) } resolves true
  * @test #NestedIf, { account: true, age: 12 } resolves true
  * @test #NestedIf, { account: false, age: 12 } resolves true
  * @test #NestedIf, { account: true, age: 18 } resolves true
