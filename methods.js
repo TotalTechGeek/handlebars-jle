@@ -1,15 +1,37 @@
 import { Compiler, Constants } from "json-logic-engine";
 const HashArg = Symbol.for('HashArg');
 
+
+/**
+* Overrides the truthiness check of the engine.
+* @param {*} value
+* @returns
+*/
+function truthy (value) {
+  if (!value) return value
+  // The following check could be erased, as it'd be caught by the iterator check,
+  // but it's here for performance reasons.
+  if (Array.isArray(value)) return value.length > 0
+  if (typeof value === 'object') {
+    if (value[Symbol.iterator]) {
+      if ('length' in value && value.length === 0) return false
+      if ('size' in value && value.size === 0) return false
+    }
+    // Objects are considered truthy regardless in Handlebars
+    // if (value.constructor.name === 'Object') return Object.keys(value).length > 0
+  }
+  return value
+}
+
 /**
  * Extracts hash arguments from the arguments array and simplifies it into an object,
  * returning the simplified arguments array and the hash arguments object
- * @param {any[]} args 
+ * @param {any[]} args
  * @returns {[Record<string, any>, any[]]}
  */
 export function processArgs (args, nullIfEmpty = false) {
     const rArgs = []
-    let options = {} 
+    let options = {}
     let assigned = false
     for (const arg of args) {
         if (arg && arg[HashArg]) {
@@ -23,7 +45,7 @@ export function processArgs (args, nullIfEmpty = false) {
     return [rArgs, options];
 }
 
-  
+
 /**
  * Function used to help set the "above" context for iterables during
  * interpreted mode. This guy will check the "as" settings and
@@ -34,14 +56,14 @@ function createBlockParamContext (index, value, as) {
     if (!as) return val
     if (as.length === 1) val[as[0]] = value
     else if (as.length >= 2) val[as[0]] = value, val[as[1]] = index
-    return val 
+    return val
 }
 
 function each (iterable, func) {
     let res = ''
     if (Array.isArray(iterable)) {
       for (let i = 0; i < iterable.length; i++) res += func(iterable[i], i)
-    } 
+    }
     // check if iterable is iterable
     else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
       let i = 0
@@ -74,16 +96,18 @@ async function eachAsync (iterable, func) {
 /**
  * Setup the logic engine
  * @template {import('json-logic-engine').LogicEngine | import('json-logic-engine').AsyncLogicEngine} T
- * @param {T} engine 
+ * @param {T} engine
  * @returns T
  */
 export function setupEngine (engine) {
     const templates = {}
 
+    engine.truthy = truthy
     engine.templates = templates
     if (engine.fallback) {
         engine.fallback.templates = templates
         engine.fallback.methods = engine.methods
+        engine.fallback.truthy = truthy
     }
 
     // Inspired by escape-html
@@ -92,22 +116,22 @@ export function setupEngine (engine) {
         if (Array.isArray(str)) str = str[0]
         if (str === null) return ''
         if (typeof str !== 'string') return str;
-    
+
         let index = 0
         let shouldEscape = false
         for (; index < str.length; index++) {
         const char = str.charCodeAt(index)
         if (char === 34 || char === 38 || char === 39 || char === 60 || char === 62) {
             shouldEscape = true
-            break 
+            break
         }
         }
         if (!shouldEscape) return str
-    
+
         let escape
         let html = ''
         let lastIndex = 0
-    
+
         for (; index < str.length; index++) {
         switch (str.charCodeAt(index)) {
             case 34: // "
@@ -132,12 +156,12 @@ export function setupEngine (engine) {
         lastIndex = index + 1
         html += escape
         }
-    
+
         return lastIndex !== index ? html + str.substring(lastIndex, index) : html
   }, { deterministic: true, sync: true, optimizeUnary: true });
-  
-  
-  
+
+
+
   engine.addMethod('each', {
     method: (preprocessed, context, above, engine) => {
       const [data, options] = processArgs(preprocessed)
@@ -168,7 +192,7 @@ export function setupEngine (engine) {
         for (let i = 0; i < iterable.length; i++) {
           res += await engine.run(data[1], iterable[i], { above: [createBlockParamContext(i, iterable[i], options.as), context, above] })
         }
-      } else if (iterable && typeof iterable[Symbol.iterator] === 'function') { 
+      } else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
         // Todo: Add Async Iterator Support
         let i = 0
         if (iterable instanceof Map) for (const [key, value] of iterable) res += await engine.run(data[1], value, { above: [createBlockParamContext(key, value, options.as), context, above] })
@@ -195,16 +219,16 @@ export function setupEngine (engine) {
       buildState.methods.push(mapper)
       buildState.methods.each = each
       buildState.methods.eachAsync = eachAsync
-  
+
       // Todo: Maybe we can make a utility for this.
       let currentState = '{ "index": x }'
       if (options.as) {
         if (options.as.length === 1) currentState = `{ "index": x, ${JSON.stringify(options.as[0])}: i }`
         if (options.as.length >= 2) currentState = `{ "index": x, ${JSON.stringify(options.as[0])}: i, ${JSON.stringify(options.as[1])}: x }`
       }
-  
+
       const aboveArray = mapper.aboveDetected ? `[${currentState}, context, above]` : 'null'
-  
+
       if (async) {
         if (!Constants.isSync(mapper)) {
           buildState.detectAsync = true
@@ -220,7 +244,7 @@ export function setupEngine (engine) {
     traverse: false,
     deterministic: engine.methods.map.deterministic
   })
-  
+
   engine.methods['lt'] = engine.methods['<'];
   engine.methods['gt'] = engine.methods['>'];
   engine.methods['gte'] = engine.methods['>='];
@@ -232,70 +256,70 @@ export function setupEngine (engine) {
   engine.methods['subtract'] = engine.methods['-'];
   engine.methods['lookup'] = engine.methods['get'];
   engine.methods['default'] = engine.methods['??'];
-  
+
   engine.addMethod('isArray', (args) => Array.isArray(args[0]), { deterministic: true, sync: true });
   engine.addMethod('type', (args) => typeof args[0], { deterministic: true, sync: true });
   engine.addMethod('log', ([value]) => { console.log(value); return value }, { deterministic: true, sync: true });
-  
+
   engine.addMethod('lowercase', (args) => Array.isArray(args) ? args[0].toLowerCase() : args.toLowerCase(), { deterministic: true, sync: true, optimizeUnary: true });
   engine.addMethod('uppercase', (args) => args[0].toUpperCase(), { deterministic: true, sync: true });
   engine.addMethod('json', (args) => JSON.stringify(args[0]), { deterministic: true, sync: true });
   engine.addMethod('truncate', (args) => args[0].substring(0, args[1]), { deterministic: true, sync: true });
   engine.addMethod('arr', (args) => Array.isArray(args) ? args : [args], { deterministic: true, sync: true });
-  
+
   engine.addMethod('with', {
       method: (args, context, above, engine) => {
           const [rArgs, options] = processArgs(args)
           const content = rArgs.pop()
-  
+
           const optionsLength = Object.keys(options).length
           for (const key in options) options[key] = engine.run(options[key], context, { above })
-  
+
           if (rArgs.length) rArgs[0] = engine.run(rArgs[0], context, { above })
-  
-          let item 
+
+          let item
           if (optionsLength && rArgs.length) item = { ...options, ...rArgs[0] }
           else if (optionsLength) item = options
           else if (!rArgs.length) item = {}
           if (item) return engine.run(content, item, { above: [createBlockParamContext(null, item, options.as), context, above] })
-  
+
           return engine.run(content, rArgs[0], { above })
       },
       asyncMethod: async (args, context, above, engine) => {
           const [rArgs, options] = processArgs(args)
           const content = rArgs.pop()
-  
+
           const optionsLength = Object.keys(options).length
           for (const key in options) options[key] = await engine.run(options[key], context, { above })
           if (rArgs.length) rArgs[0] = await engine.run(rArgs[0], context, { above })
-  
-          let item 
+
+          let item
           if (optionsLength && rArgs.length) item = { ...options, ...rArgs[0] }
           else if (optionsLength) item = options
           else if (!rArgs.length) item = {}
           if (item) return engine.run(content, item, { above: [createBlockParamContext(null, item, options.as), context, above] })
-  
+
           return engine.run(content, rArgs[0], { above })
       },
       compile: (args, buildState) => {
           const [rArgs, options] = processArgs(args)
           const content = rArgs.pop()
-          
+
           buildState.methods.push(Compiler.build(content, { ...buildState, asyncDetected: false, avoidInlineAsync: true, extraArguments: 'above' }))
           const position = buildState.methods.length - 1
           const optionsLength = Object.keys(options).length
-  
+
           let objectBuild = '   '
           for (const key in options) objectBuild += `${Compiler.buildString(key, buildState)}: ${Compiler.buildString(options[key], buildState)}, `
           objectBuild = '{' + objectBuild.slice(0, -2) + '}'
-  
+
           const asyncPrefix = !Constants.isSync(buildState.methods[position]) ? 'await ' : ''
-  
+
           function makeContext (val) {
-              if (!options.as) return 
+              if (!options.as) return
               if (options.as.length === 1) return `{ ${JSON.stringify(options.as[0])}: ${val} }`
           }
-  
+
           if (optionsLength && rArgs.length) return asyncPrefix + `methods[${position}]({ ...(${Compiler.buildString(rArgs[0], buildState)}), ...${objectBuild} }, [${makeContext(`{ ...(${Compiler.buildString(rArgs[0], buildState)}), ...${objectBuild} }`)}, context, above])`
           if (optionsLength) return asyncPrefix + `methods[${position}](${objectBuild}, [${makeContext(objectBuild)}, context, above])`
           if (!rArgs.length) return asyncPrefix + `methods[${position}](null, [null, context, above])`
@@ -309,7 +333,7 @@ export function setupEngine (engine) {
           return check([Object.values(options), rArgs], buildState) && check(content, { ...buildState, insideIterator: true })
       }
   })
-  
+
   engine.addMethod('match', (args) => {
       const value = args[0]
       const [pArgs, options] = processArgs(args.slice(1))
@@ -317,40 +341,40 @@ export function setupEngine (engine) {
       for (let i = 0; i < pArgs.length; i += 2) if (value === pArgs[i]) return pArgs[i+1]
       return pArgs[pArgs.length - 1]
   }, { deterministic: true, sync: true });
-  
+
   engine.addMethod('merge', (args) => Object.assign({}, ...args), { deterministic: true, sync: true });
   engine.addMethod('%HashArg', ([key, value]) => ({ [key]: value, [HashArg]: true }), { sync: true, deterministic: true });
-  
+
   engine.addMethod('obj', {
     method: (args, context, above, engine) => {
         const [pArgs, obj] = processArgs(args)
         for (let i = 0; i < pArgs.length; i += 2) obj[pArgs[i]] = pArgs[i+1]
         return obj
     },
-    traverse: true, 
+    traverse: true,
     compile: (data, buildState) => {
       let res = buildState.compile`{`
       const [pArgs, obj] = processArgs(data)
-      
+
       let first = true
       for (const key in obj) {
         res = buildState.compile`${res}${first ? buildState.compile`` : buildState.compile`,`} ${key}: ${obj[key]}`
         first = false
       }
-  
+
       for (let i = 0; i < pArgs.length; i += 2) {
         res = buildState.compile`${res}${first ? buildState.compile`` : buildState.compile`,`} ${pArgs[i]}: ${pArgs[i+1]}`
         first = false
       }
-      
+
       return buildState.compile`${res} }`
     },
     deterministic: true
   });
-  
+
   engine.methods.object = engine.methods.obj;
   engine.methods.array = engine.methods.arr;
-  
+
   // recursive variable lookup -- takes a perf hit; cannot be optimized
   engine.addMethod('rvar', {
       method: (name, context, above, engine) => {
@@ -371,8 +395,8 @@ export function setupEngine (engine) {
         return null
     }
   }, { deterministic: false, sync: true, optimizeUnary: true })
-  
-  
+
+
   engine.addMethod('%partial', {
       method: (args, context, above, engine) => {
           const path = args[0]
@@ -380,7 +404,7 @@ export function setupEngine (engine) {
           if (!templates[path]) throw new Error(`Template ${path} not found`)
           if (options) for (const key in options) options[key] = engine.run(options[key], context, { above })
           if (options?.['']) return templates[path](options[''], [null, context, above], engine)
-          else if (options) return templates[path](options, [null, context, above], engine)        
+          else if (options) return templates[path](options, [null, context, above], engine)
           return templates[path](context, [null, context, above], engine)
       },
       asyncMethod: async (args, context, above, engine) => {
@@ -402,9 +426,9 @@ export function setupEngine (engine) {
       compile: (data, buildState) => {
           const path = data[0]
           const options = processArgs (data, true)[1]
-      
+
           if (options?.['']) return buildState.compile`${templates[path]}(${options['']}, [null, context, above], engine)`
-  
+
           if (options) {
               let res = buildState.compile`{`
               let first = true
@@ -415,11 +439,11 @@ export function setupEngine (engine) {
               res = buildState.compile`${res} }`
               return buildState.compile`${templates[path]}(${res}, [null, context, above], engine)`
           }
-          
+
           return false
       }
   })
-  
+
   // Warning: This guy isn't scoped to the template; so registering in one template will register in all
   // This can allow for mangling.
   engine.addMethod('inline', {
@@ -439,6 +463,6 @@ export function setupEngine (engine) {
           return '""'
       }
   }, { sync: true })
-  
+
   return engine
 }

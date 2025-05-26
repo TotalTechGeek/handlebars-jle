@@ -5,11 +5,11 @@ import { setupEngine } from "./methods.js";
 
 /**
  * Internal function to register a partial with the engine.
- * @param {string} name 
- * @param {string} script 
- * @param {{ noEscape?: boolean, recurse?: boolean }} options 
- * @param {LogicEngine | AsyncLogicEngine} engine 
- * @param {boolean} interpreted 
+ * @param {string} name
+ * @param {string} script
+ * @param {{ noEscape?: boolean, recurse?: boolean }} options
+ * @param {LogicEngine | AsyncLogicEngine} engine
+ * @param {boolean} interpreted
  */
 function registerPartial (name, script, options, engine, interpreted) {
   if (interpreted) {
@@ -44,9 +44,9 @@ export class Handlebars {
   }
 
   /**
-   * 
-   * @param {string} script 
-   * @param {{ noEscape?: boolean, recurse?: boolean }} options 
+   *
+   * @param {string} script
+   * @param {{ noEscape?: boolean, recurse?: boolean }} options
    * @returns {(data: any) => string}
    */
   compile (script, options = {}) {
@@ -57,9 +57,9 @@ export class Handlebars {
 
   /**
    * Registers a partial that can be run with JSON data, uses the logic compiler
-   * @param {string} name 
-   * @param {string} script 
-   * @param {{ noEscape?: boolean, recurse?: boolean }} options 
+   * @param {string} name
+   * @param {string} script
+   * @param {{ noEscape?: boolean, recurse?: boolean }} options
    */
   register (name, script, options = {}) {
     registerPartial(name, script, options, this.engine, this.#interpreted)
@@ -83,7 +83,7 @@ export class AsyncHandlebars {
 
   /**
    * Compiles a handlebars template string to a function that can be run with JSON data
-   * @param {string} str 
+   * @param {string} str
    * @param {{ noEscape?: boolean, recurse?: boolean }} options
    * @returns {(data: any) => Promise<string>}
    */
@@ -105,9 +105,9 @@ export class AsyncHandlebars {
 
   /**
    * Registers a partial that can be run with JSON data, uses the logic compiler
-   * @param {string} name 
-   * @param {string} script 
-   * @param {{ noEscape?: boolean, recurse?: boolean }} options 
+   * @param {string} name
+   * @param {string} script
+   * @param {{ noEscape?: boolean, recurse?: boolean }} options
    */
   register (name, script, options = {}) {
     registerPartial(name, script, options, this.engine, this.#interpreted)
@@ -116,7 +116,7 @@ export class AsyncHandlebars {
 
 /**
  * Takes a handlebars template string and returns a JSON Logic object
- * @param {string} str 
+ * @param {string} str
  * @param {{ noEscape?: boolean, recurse?: boolean }} options
  * @returns {*} A JSON Logic object representing the handlebars template
  */
