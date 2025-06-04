@@ -266,5 +266,13 @@
   "RunAsync(#SimpleIf, { account: Set([]) })": {
     "value": "You have no account!",
     "async": true
+  },
+  "Run(#TagWithNumber, { \"2024_tag\": '2024' })": {
+    "value": "2024",
+    "async": false
+  },
+  "RunAsync(#TagWithNumber, { \"2024_tag\": '2024' })": {
+    "value": "2024",
+    "async": true
   }
 }

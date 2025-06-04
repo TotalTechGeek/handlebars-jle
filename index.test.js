@@ -62,6 +62,7 @@ export function Cases () {
 {{/each}}`,
 'Person': `{{name}} is {{age}} years old.`,
 'TagWithColon': `{{some:tag}}`,
+'TagWithNumber': `{{2024_tag}}`,
 'SimpleIf': `{{#if account}}You have an account!{{else}}You have no account!{{/if}}`,
 'SimpleUnless': `{{#unless account}}You have no account!{{else}}You have an account!{{/unless}}`,
 'NestedIf': `{{~#if account~}}
@@ -180,6 +181,7 @@ ExampleData: {
  * @test #Person, { name: 'John', age: 12 }
  * @test #Person, { name: 'Jane', age: 24 }
  * @test #TagWithColon, { "some:tag": 'John' }
+ * @test #TagWithNumber, { "2024_tag": '2024' }
  * @test #SimpleIf, { account: true }
  * @test #SimpleIf, { account: false }
  * @test #SimpleIf, { account: {} }
@@ -246,6 +248,7 @@ export function Run(script, data) {
  * @test #Person, { name: 'John', age: 12 }
  * @test #Person, { name: 'Jane', age: 24 }
  * @test #TagWithColon, { "some:tag": 'John' }
+ * @test #TagWithNumber, { "2024_tag": '2024' }
  * @test #SimpleIf, { account: true }
  * @test #SimpleIf, { account: false }
  * @test #SimpleIf, { account: {} }
@@ -307,6 +310,7 @@ export async function RunAsync(script, data) {
  * @test #Person, { name: 'John', age: 12 } returns true
  * @test #Person, { name: 'Jane', age: 24 } returns true
  * @test #TagWithColon, { "some:tag": 'John' } returns true
+ * @test #TagWithNumber, { "2024_tag": '2024' } returns true
  * @test #SimpleIf, { account: true } returns true
  * @test #SimpleIf, { account: false } returns true
  * @test #SimpleIf, { account: {} } returns true
@@ -352,6 +356,7 @@ export function RunMethodMatch(script, data) {
  * @test #Person, { name: 'John', age: 12 } resolves true
  * @test #Person, { name: 'Jane', age: 24 } resolves true
  * @test #TagWithColon, { "some:tag": 'John' } resolves true
+ * @test #TagWithNumber, { "2024_tag": '2024' } resolves true
  * @test #SimpleIf, { account: true } resolves true
  * @test #SimpleIf, { account: false } resolves true
  * @test #SimpleIf, { account: {} } resolves true
