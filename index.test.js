@@ -156,6 +156,8 @@ ExampleData: {
 'EscapedInsideTemplate': "Hello \\n {{name}}!",
 'EscapedJSON': `{{json (obj name='<b>John</b>' age=12)}}`,
 'UnescapedJSON': `{{{json (obj name='<b>John</b>' age=12)}}}`,
+'LiteralTest': `Hello {{[user.name]}}`,
+'LiteralTest2': `Hello {{user.[user.name]}}`,
     }
 }
 
@@ -225,6 +227,8 @@ ExampleData: {
  * @test #EscapedInsideTemplate, { name: 'John' } returns 'Hello \\n John!'
  * @test #EscapedJSON returns '{&quot;name&quot;:&quot;&lt;b&gt;John&lt;/b&gt;&quot;,&quot;age&quot;:12}'
  * @test #UnescapedJSON returns '{"name":"<b>John</b>","age":12}'
+ * @test #LiteralTest, { "user.name": "John" } returns 'Hello John'
+ * @test #LiteralTest2, { user: { "user.name": "John" } } returns 'Hello John'
  */
 export function Run(script, data) {
     return hbs.compile(script, { recurse: false })(data)
@@ -289,6 +293,8 @@ export function Run(script, data) {
  * @test #InternalIndexAccess, { iter: [1, 2, 3] }
  * @test #EscapedJSON resolves '{&quot;name&quot;:&quot;&lt;b&gt;John&lt;/b&gt;&quot;,&quot;age&quot;:12}'
  * @test #UnescapedJSON resolves '{"name":"<b>John</b>","age":12}'
+ * @test #LiteralTest, { "user.name": "John" } resolves 'Hello John'
+ * @test #LiteralTest2, { user: { "user.name": "John" } } resolves 'Hello John'
  */
 export async function RunAsync(script, data) {
     return (asyncHbs.compile(script, { recurse: false }))(data)
@@ -333,6 +339,8 @@ export async function RunAsync(script, data) {
  * @test #NumbersInVariables, { ELEMENT_001: 'John', ELEMENT_003: 'Doe' } returns true
  * @test #StaticInternalIndexAccess returns true
  * @test #InternalIndexAccess, { iter: [1, 2, 3] } returns true
+ * @test #LiteralTest, { "user.name": "John" } returns true
+ * @test #LiteralTest2, { user: { "user.name": "John" } } returns true
  */
 export function RunMethodMatch(script, data) {
     const f = hbsInterpreted.compile(script, { recurse: false })
@@ -383,6 +391,8 @@ export function RunMethodMatch(script, data) {
  * @test #NumbersInVariables, { ELEMENT_001: 'John', ELEMENT_003: 'Doe' } resolves true
  * @test #StaticInternalIndexAccess resolves true
  * @test #InternalIndexAccess, { iter: [1, 2, 3] } resolves true
+ * @test #LiteralTest, { "user.name": "John" } resolves true
+ * @test #LiteralTest2, { user: { "user.name": "John" } } resolves true
  */
 export async function RunMethodAsyncMatch(script, data) {
     const f = asyncHbsInterpreted.compile(script, { recurse: false })

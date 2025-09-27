@@ -7,20 +7,67 @@
     return { escape: obj }
   }
 
+  function amend (n, forceArray) {
+  	let balance = 0
+    // Quick scan for open and closing, it's not balanced.
+    for (let i = 0; i < n.length; i++) {
+		if (n[i] === '[') balance++
+        if (n[i] === ']') balance--
+        if (balance < 0) error('Invalid Brackets')
+    }
+    if (balance !== 0) error('Invalid Brackets')
+
+    if (!forceArray && !n.includes('.')) {
+    	if (n.startsWith('[') && n.endsWith(']')) return n.substring(1, n.length - 1)
+        return n
+    }
+
+    n = n.split('.')
+
+    let start = -1
+    let end
+    for (let i = 0; i < n.length; i++) {
+    	if (n[i].startsWith('[')) {
+        	if (start !== -1) error('Invalid Open Bracket')
+        	start = i
+
+            if (n[i].endsWith(']')) {
+              start = -1
+              n[i] = n[i].substring(1, n[i].length -1)
+            }
+            continue
+        }
+
+        if (n[i].endsWith(']')) {
+          const removed = n.splice(start, i-start+1)
+          const str = removed.join('.')
+          n.splice(start, 0, str.substring(1, str.length - 1))
+          i = start
+          start = -1
+          continue
+        }
+
+        if (n[i].includes('[')) error('Invalid Open Bracket')
+        if (n[i].includes(']')) error('Invalid Close Bracket')
+    }
+
+
+    return n
+  }
+
   function getVar (name) {
     if (blockParams.has(name.split('.')[0])) return { rvar: name }
     if (varAccess === 'rvar') return { rvar: name }
 
     let upCount = 0
     while (name.startsWith('../')) {
-      upCount += 1      
+      upCount += 1
       name = name.substring(3)
     }
 
     if (upCount && !name) return { val: [[upCount]] }
-    if (upCount) return { val: [[upCount], ...name.split('.')] }
-    if (name.includes('.')) return { val: name.split('.') }
-    return { val: name }
+    if (upCount) return { val: [[upCount], ...amend(name, true)] }
+    return { val: amend(name) }
   }
 
   const varAccess = options.recurse ? 'rvar' : 'val'
@@ -46,7 +93,7 @@ Element = "{{ESCAPED_CHAR " escapedChar:. "}}" { return escapedChar }
       let defaulted = false
       for (const item of content.cat) {
         if (item[varAccess] === 'else' || (item.escape && item.escape[varAccess] === 'else')) {
-          chunks.push([{ cat: [] }]) 
+          chunks.push([{ cat: [] }])
           defaulted = true
 		  continue
         }
@@ -61,11 +108,11 @@ Element = "{{ESCAPED_CHAR " escapedChar:. "}}" { return escapedChar }
       return { cat: { if: [startTag.args[0], ...chunks.flat()] } };
     }
 
-    // Workaround to support implicit iteration / if. 
+    // Workaround to support implicit iteration / if.
     if (startTag.name === '$eachOrIf') {
       const variable = { val: startTag.oName.split('.') }
       // If we wanted it to iterate over all Objects - we could do this:
-      // { eq: [{ and: [variable, { type: [variable] }] }, 'object'] } 
+      // { eq: [{ and: [variable, { type: [variable] }] }, 'object'] }
       return { cat: { if: [{ isArray: [variable] }, { each: [variable, content] }, { if: [variable, content, ''] }] } }
     }
 
@@ -73,7 +120,7 @@ Element = "{{ESCAPED_CHAR " escapedChar:. "}}" { return escapedChar }
   }
   / startTag:selfTag { return startTag; }
 
-sTag = "{{#" name:TagName args:Arg* as:asBlock? "}}" '\n'? { 
+sTag = "{{#" name:TagName args:Arg* as:asBlock? "}}" '\n'? {
   const found = name in (options.methods || {}) || name === 'with' || name === 'if' || name === 'each'
   // Assume implicit iteration / if; workaround.
   if ((as||[]).length) {
@@ -86,18 +133,18 @@ sTag = "{{#" name:TagName args:Arg* as:asBlock? "}}" '\n'? {
     args.push({ '%HashArg': ['as', as], [HashArg]: true })
   }
   if (!found && !args.length) return { oName: name, name: '$eachOrIf', args }
-  return { name, args, as }; 
+  return { name, args, as };
 }
 
 asBlock = "|" _ names:Arg* _ "|" { return names }
-selfTag = "{{" name:TagName args:Arg* "}}" { 
+selfTag = "{{" name:TagName args:Arg* "}}" {
   if (name === '.' || name === 'this') return wrapEscape({ val: [] })
   if (name === "@key" || name === "@index") return wrapEscape({ val: [[1], 'index'] })
   if (name === '^') return wrapEscape(getVar('else'))
   if (name.startsWith("this.")) return wrapEscape({ val: name.substring(5).split('.') })
   const variableObj = getVar(name.replace(/\.\.\/@?/g, i => i.includes('@') ? '../' : '../../').replace(/\.\.\/this\.?/g, '../'))
   if (name in (options.methods || {}) && !args.length) return { if: [variableObj, wrapEscape(variableObj), { [name]: [] }] }
-  if (!args.length) return wrapEscape(variableObj); 
+  if (!args.length) return wrapEscape(variableObj);
   if (name === 'else') return { [name]: args }
   return wrapEscape({ [name]: args })
 } / "{{{" name:TagName args:Arg* "}}}" {
@@ -111,22 +158,22 @@ selfTag = "{{" name:TagName args:Arg* "}}" {
 }
 
 eTag = _ "{{/" name:TagName "}}" { return name; }
-TagName = '../'+ [@$a-zA-Z_.0-9-\:]* { return text(); }
-  / './' [@$a-zA-Z_.0-9-\:]+ { return text().substring(2); }
-  / ([@$a-zA-Z_.0-9-][@$a-zA-Z_.0-9-\:]* / "^") { return text(); }
+TagName = '../'+ [@$a-zA-Z_.0-9-\:\[\]]* { return text(); }
+  / './' [@$a-zA-Z_.0-9-\:\[\]]+ { return text().substring(2); }
+  / ([@$a-zA-Z_.\[0-9-][@$a-zA-Z_.0-9-\:\[\]]* / "^") { return text(); }
 Text = ([^{}\\] / "{" !"{" / "}" !"}")+ { return text(); }
 Arg = _ data:(Func / Boolean / Null / Undefined / HashArg / Variable / Number / Str) _ { return data }
-Variable = ([@$a-zA-Z_./-][@$a-zA-Z_./0-9-]*) { 
+Variable = ([@$a-zA-Z_./-][@$a-zA-Z_./0-9-]*) {
   let chars = text().replace(/\.\.\/@?/g, i => i.includes('@') ? i : '../../').replace(/\.\.\/this\.?/g, '../')
   if (chars === "@index" || chars === "@key") return { val: [[1], 'index'] }
   if (chars === "this" || chars === '.') return { val: [] }
   if (chars.startsWith("this.")) return getVar(chars.substring(5))
-  return getVar(chars); 
+  return getVar(chars);
 }
 Boolean = data:("true" / "false") { return data === "true" }
 Null = "null" { return null }
 Undefined = "undefined" { return undefined }
-HashArg = val:Variable _ "=" data:Arg { return { '%HashArg': [val[varAccess], data], [HashArg]: true } }; 
+HashArg = val:Variable _ "=" data:Arg { return { '%HashArg': [val[varAccess], data], [HashArg]: true } };
 Number   = [0-9]+ { return +text() }
 Str = "\"" chars:[^\"]* "\"" { return chars.join(""); }
  / "\'" chars:[^"'"]* "\'" { return chars.join(""); }
