@@ -159,6 +159,7 @@ ExampleData: {
 'LiteralTest': `Hello {{[user.name]}}`,
 'LiteralTest2': `Hello {{user.[user.name]}}`,
 'FirstLastTest': `{{#each arr}}{{@first}} {{@last}}{{/each}}`,
+'LastCommaTest': `{{#each arr}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}`
     }
 }
 
@@ -232,6 +233,9 @@ ExampleData: {
  * @test #LiteralTest2, { user: { "user.name": "John" } } returns 'Hello John'
  * @test #FirstLastTest, { arr: [1,2,3] }
  * @test #FirstLastTest, { arr: [1,2,3,4,5] }
+ * @test #LastCommaTest, { arr: [1,2,3] } returns '1, 2, 3'
+ * @test #LastCommaTest, { arr: [1,2,3,4] } returns '1, 2, 3, 4'
+ * @test #LastCommaTest, { arr: ['Jesse', 'John'] } returns 'Jesse, John'
  */
 export function Run(script, data) {
     return hbs.compile(script, { recurse: false })(data)
@@ -300,6 +304,9 @@ export function Run(script, data) {
  * @test #LiteralTest2, { user: { "user.name": "John" } } resolves 'Hello John'
  * @test #FirstLastTest, { arr: [1,2,3] }
  * @test #FirstLastTest, { arr: [1,2,3,4,5] }
+ * @test #LastCommaTest, { arr: [1,2,3] } resolves '1, 2, 3'
+ * @test #LastCommaTest, { arr: [1,2,3,4] } resolves '1, 2, 3, 4'
+ * @test #LastCommaTest, { arr: ['Jesse', 'John'] } resolves 'Jesse, John'
  */
 export async function RunAsync(script, data) {
     return (asyncHbs.compile(script, { recurse: false }))(data)
@@ -348,6 +355,9 @@ export async function RunAsync(script, data) {
  * @test #LiteralTest2, { user: { "user.name": "John" } } returns true
  * @test #FirstLastTest, { arr: [1,2,3] } returns true
  * @test #FirstLastTest, { arr: [1,2,3,4,5] } returns true
+ * @test #LastCommaTest, { arr: [1,2,3] } returns true
+ * @test #LastCommaTest, { arr: [1,2,3,4] } returns true
+ * @test #LastCommaTest, { arr: ['Jesse', 'John'] } returns true
  */
 export function RunMethodMatch(script, data) {
     const f = hbsInterpreted.compile(script, { recurse: false })
@@ -402,6 +412,9 @@ export function RunMethodMatch(script, data) {
  * @test #LiteralTest2, { user: { "user.name": "John" } } resolves true
  * @test #FirstLastTest, { arr: [1,2,3] } resolves true
  * @test #FirstLastTest, { arr: [1,2,3,4,5] } resolves true
+ * @test #LastCommaTest, { arr: [1,2,3] } resolves true
+ * @test #LastCommaTest, { arr: [1,2,3,4] } resolves true
+ * @test #LastCommaTest, { arr: ['Jesse', 'John'] } resolves true
  */
 export async function RunMethodAsyncMatch(script, data) {
     const f = asyncHbsInterpreted.compile(script, { recurse: false })
