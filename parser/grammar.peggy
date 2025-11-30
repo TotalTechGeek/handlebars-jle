@@ -105,6 +105,11 @@ Element = "{{ESCAPED_CHAR " escapedChar:. "}}" { return escapedChar }
         lastChunk[lastChunk.length-1].cat.push(item)
       }
       if (!defaulted) chunks.push('')
+
+      if (chunks.flat().every(i => i.each || i.cat || typeof i === 'string')) {
+        return { if: [startTag.args[0], ...chunks.flat()] }
+      }
+
       return { cat: { if: [startTag.args[0], ...chunks.flat()] } };
     }
 
@@ -116,6 +121,7 @@ Element = "{{ESCAPED_CHAR " escapedChar:. "}}" { return escapedChar }
       return { cat: { if: [{ isArray: [variable] }, { each: [variable, content] }, { if: [variable, content, ''] }] } }
     }
 
+  if (startTag.name === 'each') return { each: [...startTag.args, content] };
   return { cat: { [startTag.name]: [...startTag.args, content] }};
   }
   / startTag:selfTag { return startTag; }
@@ -140,6 +146,8 @@ asBlock = "|" _ names:Arg* _ "|" { return names }
 selfTag = "{{" name:TagName args:Arg* "}}" {
   if (name === '.' || name === 'this') return wrapEscape({ val: [] })
   if (name === "@key" || name === "@index") return wrapEscape({ val: [[1], 'index'] })
+  if (name === '@first') return { '@first': [] }
+  if (name === '@last') return { '@last': [] }
   if (name === '^') return wrapEscape(getVar('else'))
   if (name.startsWith("this.")) return wrapEscape({ val: name.substring(5).split('.') })
   const variableObj = getVar(name.replace(/\.\.\/@?/g, i => i.includes('@') ? '../' : '../../').replace(/\.\.\/this\.?/g, '../'))
@@ -150,6 +158,8 @@ selfTag = "{{" name:TagName args:Arg* "}}" {
 } / "{{{" name:TagName args:Arg* "}}}" {
   if (name === '.' || name === "this") return { val: [] }
   if (name === "@index" || name === "@key") return { val: [[1], 'index'] }
+  if (name === '@first') return { '@first': [] }
+  if (name === '@last') return { '@last': [] }
   if (name.startsWith("this.")) return { val: name.substring(5).split('.') }
   if (!args.length) return getVar(name.replace(/\.\.\/@?/g, i => i.includes('@') ? i : '../../').replace(/\.\.\/this\.?/g, '../'))
   return { [name]: args }
@@ -166,6 +176,8 @@ Arg = _ data:(Func / Boolean / Null / Undefined / HashArg / Variable / Number / 
 Variable = ([@$a-zA-Z_./-][@$a-zA-Z_./0-9-]*) {
   let chars = text().replace(/\.\.\/@?/g, i => i.includes('@') ? i : '../../').replace(/\.\.\/this\.?/g, '../')
   if (chars === "@index" || chars === "@key") return { val: [[1], 'index'] }
+  if (chars === '@first') return { '@first': [] }
+  if (chars === '@last') return { '@last': [] }
   if (chars === "this" || chars === '.') return { val: [] }
   if (chars.startsWith("this.")) return getVar(chars.substring(5))
   return getVar(chars);

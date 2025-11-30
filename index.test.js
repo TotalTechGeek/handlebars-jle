@@ -158,6 +158,7 @@ ExampleData: {
 'UnescapedJSON': `{{{json (obj name='<b>John</b>' age=12)}}}`,
 'LiteralTest': `Hello {{[user.name]}}`,
 'LiteralTest2': `Hello {{user.[user.name]}}`,
+'FirstLastTest': `{{#each arr}}{{@first}} {{@last}}{{/each}}`,
     }
 }
 
@@ -229,6 +230,8 @@ ExampleData: {
  * @test #UnescapedJSON returns '{"name":"<b>John</b>","age":12}'
  * @test #LiteralTest, { "user.name": "John" } returns 'Hello John'
  * @test #LiteralTest2, { user: { "user.name": "John" } } returns 'Hello John'
+ * @test #FirstLastTest, { arr: [1,2,3] }
+ * @test #FirstLastTest, { arr: [1,2,3,4,5] }
  */
 export function Run(script, data) {
     return hbs.compile(script, { recurse: false })(data)
@@ -295,6 +298,8 @@ export function Run(script, data) {
  * @test #UnescapedJSON resolves '{"name":"<b>John</b>","age":12}'
  * @test #LiteralTest, { "user.name": "John" } resolves 'Hello John'
  * @test #LiteralTest2, { user: { "user.name": "John" } } resolves 'Hello John'
+ * @test #FirstLastTest, { arr: [1,2,3] }
+ * @test #FirstLastTest, { arr: [1,2,3,4,5] }
  */
 export async function RunAsync(script, data) {
     return (asyncHbs.compile(script, { recurse: false }))(data)
@@ -341,6 +346,8 @@ export async function RunAsync(script, data) {
  * @test #InternalIndexAccess, { iter: [1, 2, 3] } returns true
  * @test #LiteralTest, { "user.name": "John" } returns true
  * @test #LiteralTest2, { user: { "user.name": "John" } } returns true
+ * @test #FirstLastTest, { arr: [1,2,3] } returns true
+ * @test #FirstLastTest, { arr: [1,2,3,4,5] } returns true
  */
 export function RunMethodMatch(script, data) {
     const f = hbsInterpreted.compile(script, { recurse: false })
@@ -393,6 +400,8 @@ export function RunMethodMatch(script, data) {
  * @test #InternalIndexAccess, { iter: [1, 2, 3] } resolves true
  * @test #LiteralTest, { "user.name": "John" } resolves true
  * @test #LiteralTest2, { user: { "user.name": "John" } } resolves true
+ * @test #FirstLastTest, { arr: [1,2,3] } resolves true
+ * @test #FirstLastTest, { arr: [1,2,3,4,5] } resolves true
  */
 export async function RunMethodAsyncMatch(script, data) {
     const f = asyncHbsInterpreted.compile(script, { recurse: false })

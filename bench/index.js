@@ -36,7 +36,7 @@ const hbsInterpreted = new HBS({ interpreted: true })
 for (const engine of [hbs, hbsAsync, hbsInterpreted]) {
   engine.register('Age', AgePartial)
   engine.register('Test', TestPartial)
-  engine.register('StartupTime', StartupTimePartial)  
+  engine.register('StartupTime', StartupTimePartial)
 }
 
 Handlebars.registerPartial('Age', AgePartial)
@@ -55,7 +55,7 @@ async function runBench (name, script, data, iter = 1e6) {
     const template = Handlebars.compile(script, { noEscape: true })
     for (let i = 0; i < iter; i++) template(data(i))
     const hbEnd = performance.now()
-    
+
     const elasticStart = performance.now()
     const elastic = Elastic.default.compileAST(script, { noEscape: true })
     for (let i = 0; i < iter; i++) elastic(data(i))
@@ -133,12 +133,12 @@ data:
 ---
 $in: base/serviceaccount.yaml
 $out: collectors/{{name}}/serviceaccount.yaml
-$replace: 
+$replace:
   SERVICE_NAME: {{lowercase name}}
 ---
 $in: base/deployment.yaml
 $out: collectors/{{name}}/deployment.yaml
-$replace: 
+$replace:
   SERVICE_NAME: {{lowercase name}}
   SERVICE_COMMAND: {{name}}
   SERVICE_IMAGE: {{default image "redacted.dkr.ecr.us-east-1.amazonaws.com/microservices/collector"}}
@@ -146,7 +146,7 @@ $replace:
 spec:
   replicas: {{default replicas 1}}
   template:
-    spec: 
+    spec:
       containers:
         - resources:
             limits:
@@ -168,12 +168,12 @@ spec:
 ---
 $in: base/role.yaml
 $out: collectors/{{name}}/role.yaml
-$replace: 
+$replace:
   SERVICE_NAME: {{lowercase name}}
 ---
 $in: base/rolebinding.yaml
 $out: collectors/{{name}}/rolebinding.yaml
-$replace: 
+$replace:
   SERVICE_NAME: {{lowercase name}}
 `
 
@@ -200,3 +200,19 @@ const partialTemplate = `
 `
 
 await runBench('Partials', partialTemplate, () => ({ name: 'Dave' }))
+
+const firstLastTemplate = `
+{{#each smallArr}}
+{{@first}} {{@last}}
+{{/each}}
+{{#each largerArr}}
+{{@first}} {{@last}}
+{{/each}}
+`
+
+const arr = [1, 2, 3]
+const largerArr = Array.from({ length: 50 }, (_, i) => i + 1)
+await runBench('First/Last', firstLastTemplate, () => ({
+  smallArr: arr,
+  largerArr
+}))

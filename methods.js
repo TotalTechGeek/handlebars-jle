@@ -51,8 +51,8 @@ export function processArgs (args, nullIfEmpty = false) {
  * interpreted mode. This guy will check the "as" settings and
  * reconfigure what values are assigned to.
  */
-function createBlockParamContext (index, value, as) {
-    const val = { index  }
+function createBlockParamContext (index, value, as, length) {
+    const val = { index, length }
     if (!as) return val
     if (as.length === 1) val[as[0]] = value
     else if (as.length >= 2) val[as[0]] = value, val[as[1]] = index
@@ -62,7 +62,8 @@ function createBlockParamContext (index, value, as) {
 function each (iterable, func) {
     let res = ''
     if (Array.isArray(iterable)) {
-      for (let i = 0; i < iterable.length; i++) res += func(iterable[i], i)
+      const len = iterable.length
+      for (let i = 0; i < iterable.length; i++) res += func(iterable[i], i, len)
     }
     // check if iterable is iterable
     else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
@@ -79,7 +80,8 @@ function each (iterable, func) {
 async function eachAsync (iterable, func) {
   let res = ''
   if (Array.isArray(iterable)) {
-    for (let i = 0; i < iterable.length; i++) res += await func(iterable[i], i)
+    const len = iterable.length
+    for (let i = 0; i < iterable.length; i++) res += await func(iterable[i], i, len)
   } else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
     // Todo: Add Async Iterator Support
     let i = 0
@@ -170,7 +172,7 @@ export function setupEngine (engine) {
       let res = ''
       if (Array.isArray(iterable)) {
         for (let i = 0; i < iterable.length; i++) {
-          res += engine.run(data[1], iterable[i], { above: [createBlockParamContext(i, iterable[i], options.as), context, above] })
+          res += engine.run(data[1], iterable[i], { above: [createBlockParamContext(i, iterable[i], options.as, iterable.length), context, above] })
         }
       } else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
         let i = 0
@@ -190,7 +192,7 @@ export function setupEngine (engine) {
       let res = ''
       if (Array.isArray(iterable)) {
         for (let i = 0; i < iterable.length; i++) {
-          res += await engine.run(data[1], iterable[i], { above: [createBlockParamContext(i, iterable[i], options.as), context, above] })
+          res += await engine.run(data[1], iterable[i], { above: [createBlockParamContext(i, iterable[i], options.as, iterable.length), context, above] })
         }
       } else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
         // Todo: Add Async Iterator Support
@@ -213,7 +215,7 @@ export function setupEngine (engine) {
         ...buildState,
         avoidInlineAsync: true,
         iteratorCompile: true,
-        extraArguments: 'index, above'
+        extraArguments: 'index, above, length'
       }
       mapper = Compiler.build(mapper, mapState)
       buildState.methods.push(mapper)
@@ -227,22 +229,59 @@ export function setupEngine (engine) {
         if (options.as.length >= 2) currentState = `{ "index": x, ${JSON.stringify(options.as[0])}: i, ${JSON.stringify(options.as[1])}: x }`
       }
 
+
       const aboveArray = mapper.aboveDetected ? `[${currentState}, context, above]` : 'null'
 
       if (async) {
         if (!Constants.isSync(mapper)) {
           buildState.detectAsync = true
-          return `await methods.eachAsync(${selector} || [], (i,x) => methods[${
+          return `await methods.eachAsync(${selector} || [], (i,x,l) => methods[${
             buildState.methods.length - 1
-          }](i, x, ${aboveArray}))`
+          }](i, x, ${aboveArray}, l))`
         }
       }
-      return `methods.each(${selector} || [], (i,x) => methods[${
-        buildState.methods.length - 1
-      }](i, x, ${aboveArray}))`
+
+      if (!mapper.aboveDetected) {
+        const size = 4
+        // let's build out branches up to 5, then fallback to each
+        let res = `(!Array.isArray(prev = ${selector} || []) || prev.length > ${size} ? methods.each(prev, (i,x,l) => methods[${buildState.methods.length - 1}](i,x,undefined,l)) : (prev.length === 0 ? '' : `
+
+        for (let i = 1; i <= size; i++) {
+          if (i !== size) res += `prev.length === ${i} ? `
+          for (let j = 0; j < i; j++) res += `methods[${buildState.methods.length -1}](prev[${j}], ${j}, undefined, prev.length)` + (j === i - 1 ? '' : ' + ')
+          if (i !== size) res += ' : '
+        }
+        return res + '))'
+      }
+
+      return `methods.each(${selector} || [], (i,x,l) => methods[${buildState.methods.length - 1}](i, x, ${aboveArray}, l))`
     },
     traverse: false,
     deterministic: engine.methods.map.deterministic
+  })
+
+  engine.addMethod('@last', {
+    deterministic: false,
+    sync: true,
+    method: (args, context, above, engine) => {
+        return above[0]?.index === (above[0]?.length -1)
+    },
+    compile: (data, buildState) => {
+      if (buildState.extraArguments && buildState.extraArguments.includes('length')) return `(length-1 === index)`
+      return 'null'
+    }
+  })
+
+  engine.addMethod('@first', {
+    deterministic: false,
+    sync: true,
+    method: (args, context, above, engine) => {
+      return above[0]?.index === 0
+    },
+    compile: (data, buildState) => {
+      if (buildState.extraArguments) return `(index === 0)`
+      return 'null'
+    }
   })
 
   engine.methods['lt'] = engine.methods['<'];
@@ -266,7 +305,6 @@ export function setupEngine (engine) {
   engine.addMethod('json', (args) => JSON.stringify(args[0]), { deterministic: true, sync: true });
   engine.addMethod('truncate', (args) => args[0].substring(0, args[1]), { deterministic: true, sync: true });
   engine.addMethod('arr', (args) => Array.isArray(args) ? args : [args], { deterministic: true, sync: true });
-
   engine.addMethod('with', {
       method: (args, context, above, engine) => {
           const [rArgs, options] = processArgs(args)

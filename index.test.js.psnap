@@ -274,5 +274,21 @@
   "RunAsync(#TagWithNumber, { \"2024_tag\": '2024' })": {
     "value": "2024",
     "async": true
+  },
+  "Run(#FirstLastTest, { arr: [1,2,3] })": {
+    "value": "true falsefalse falsefalse true",
+    "async": false
+  },
+  "Run(#FirstLastTest, { arr: [1,2,3,4,5] })": {
+    "value": "true falsefalse falsefalse falsefalse falsefalse true",
+    "async": false
+  },
+  "RunAsync(#FirstLastTest, { arr: [1,2,3] })": {
+    "value": "true falsefalse falsefalse true",
+    "async": true
+  },
+  "RunAsync(#FirstLastTest, { arr: [1,2,3,4,5] })": {
+    "value": "true falsefalse falsefalse falsefalse falsefalse true",
+    "async": true
   }
 }
