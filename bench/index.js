@@ -202,12 +202,8 @@ const partialTemplate = `
 await runBench('Partials', partialTemplate, () => ({ name: 'Dave' }))
 
 const firstLastTemplate = `
-{{#each smallArr}}
-{{@first}} {{@last}}
-{{/each}}
-{{#each largerArr}}
-{{@first}} {{@last}}
-{{/each}}
+{{#each smallArr}}{{#if @first}}[{{/if}}{{.}}{{#if @last}}]{{else}},{{/if}}{{/each}}
+{{#each largerArr}}{{#if @first}}[{{/if}}{{.}}{{#if @last}}]{{else}},{{/if}}{{/each}}
 `
 
 const arr = [1, 2, 3]

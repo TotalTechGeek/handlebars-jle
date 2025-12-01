@@ -63,7 +63,11 @@ function each (iterable, func) {
     let res = ''
     if (Array.isArray(iterable)) {
       const len = iterable.length
-      for (let i = 0; i < iterable.length; i++) res += func(iterable[i], i, len)
+      let i = 0
+      // let's also go with 8
+      for (; i < iterable.length - 7; i += 8) res += func(iterable[i], i, len) + func(iterable[i+1], i+1, len) + func(iterable[i+2], i+2, len) + func(iterable[i+3], i+3, len) + func(iterable[i+4], i+4, len) + func(iterable[i+5], i+5, len) + func(iterable[i+6], i+6, len) + func(iterable[i+7], i+7, len)
+      for (; i < iterable.length - 3; i += 4) res += func(iterable[i], i, len) + func(iterable[i+1], i+1, len) + func(iterable[i+2], i+2, len) + func(iterable[i+3], i+3, len)
+      for (; i < iterable.length; i++) res += func(iterable[i], i, len)
     }
     // check if iterable is iterable
     else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
@@ -162,26 +166,35 @@ export function setupEngine (engine) {
         return lastIndex !== index ? html + str.substring(lastIndex, index) : html
   }, { deterministic: true, sync: true, optimizeUnary: true });
 
+  /**
+    * Mechanism for swapping out the context for interpreted each loops
+    */
+  function swapContext (struct, iterable, i, as) {
+    struct.above[0] = createBlockParamContext(i, iterable[i], as, iterable.length)
+    return struct
+  }
 
 
   engine.addMethod('each', {
     method: (preprocessed, context, above, engine) => {
       const [data, options] = processArgs(preprocessed)
-      const iterable = engine.run(data[0], context, above, engine)
+      const iterable = engine.run(data[0], context, above)
       if (!iterable) return ''
       let res = ''
+      const struct = { above: [null, context, above] }
+      // Todo: This only works on the second time a template is used.
+      const optimizedFn = engine.optimizedMap.get(data[1])
       if (Array.isArray(iterable)) {
-        for (let i = 0; i < iterable.length; i++) {
-          res += engine.run(data[1], iterable[i], { above: [createBlockParamContext(i, iterable[i], options.as, iterable.length), context, above] })
-        }
+        let i = 0
+        if (optimizedFn && typeof optimizedFn === 'function') for (; i < iterable.length; i++) res += optimizedFn(iterable[i], swapContext(struct, iterable, i, options.as).above)
+        else for (; i < iterable.length; i++) res += engine.run(data[1], iterable[i], swapContext(struct, iterable, i, options.as))
       } else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
         let i = 0
-        if (iterable instanceof Map) for (const [key, value] of iterable) res += engine.run(data[1], value, { above: [createBlockParamContext(key, value, options.as), context, above] })
-        else for (const item of iterable) res += engine.run(data[1], item, { above: [createBlockParamContext(i++, item, options.as), context, above] })
+        if (iterable instanceof Map) for (const [key, value] of iterable) res += engine.run(data[1], value, swapContext(struct, iterable, key, options.as))
+        else for (const item of iterable) res += engine.run(data[1], item, swapContext(struct, iterable, i++, options.as))
       } else if (typeof iterable === 'object') {
-        for (const key in iterable) {
-          res += engine.run(data[1], iterable[key], { above: [createBlockParamContext(key, iterable[key], options.as), context, above] })
-        }
+        if (optimizedFn && typeof optimizedFn === 'function') for (const key in iterable) res += optimizedFn(iterable[key], swapContext(struct, iterable, key, options.as).above)
+        else for (const key in iterable) res += engine.run(data[1], iterable[key], swapContext(struct, iterable, key, options.as))
       }
       return res
     },
@@ -190,18 +203,17 @@ export function setupEngine (engine) {
       const iterable = await engine.run(data[0], context, above, engine)
       if (!iterable) return ''
       let res = ''
+      const struct = { above: [null, context, above] }
       if (Array.isArray(iterable)) {
-        for (let i = 0; i < iterable.length; i++) {
-          res += await engine.run(data[1], iterable[i], { above: [createBlockParamContext(i, iterable[i], options.as, iterable.length), context, above] })
-        }
+        for (let i = 0; i < iterable.length; i++) res += await engine.run(data[1], iterable[i], swapContext(struct, iterable, i, options.as))
       } else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
         // Todo: Add Async Iterator Support
         let i = 0
-        if (iterable instanceof Map) for (const [key, value] of iterable) res += await engine.run(data[1], value, { above: [createBlockParamContext(key, value, options.as), context, above] })
-        else for (const item of iterable) res += await engine.run(data[1], item, { above: [createBlockParamContext(i++, item, options.as), context, above] })
+        if (iterable instanceof Map) for (const [key, value] of iterable) res += await engine.run(data[1], value, swapContext(struct, iterable, key, options.as))
+        else for (const item of iterable) res += await engine.run(data[1], item, swapContext(struct, iterable, i++, options.as))
       } else if (typeof iterable === 'object') {
         for (const key in iterable) {
-          res += await engine.run(data[1], iterable[key], { above: [createBlockParamContext(key, iterable[key], options.as), context, above] })
+          res += await engine.run(data[1], iterable[key], swapContext(struct, iterable, key, options.as))
         }
       }
       return res
