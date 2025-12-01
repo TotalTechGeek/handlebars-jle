@@ -50,33 +50,43 @@ Elastic.default.registerPartial('StartupTime', StartupTimePartial)
 
 const simpleTemplate = 'Hello, {{name}}!'
 
+if (!global.gc) throw new Error('Run with --expose-gc to enable garbage collection for benchmarking; this ensures more accurate results')
+
 async function runBench (name, script, data, iter = 1e6) {
+    global.gc()
     const hbStart = performance.now()
     const template = Handlebars.compile(script, { noEscape: true })
     for (let i = 0; i < iter; i++) template(data(i))
     const hbEnd = performance.now()
+    global.gc()
+
 
     const elasticStart = performance.now()
     const elastic = Elastic.default.compileAST(script, { noEscape: true })
     for (let i = 0; i < iter; i++) elastic(data(i))
     const elasticEnd = performance.now()
+    global.gc()
+
 
     const jleStart = performance.now()
     const jle = hbs.compile(script, { noEscape: true })
     for (let i = 0; i < iter; i++) jle(data(i))
     const jleEnd = performance.now()
+    global.gc()
+
 
     const jleInterpStart = performance.now()
     const jleInterp = hbsInterpreted.compile(script, { noEscape: true })
     for (let i = 0; i < iter; i++) jleInterp(data(i))
     const jleInterpEnd = performance.now()
+    global.gc()
 
 
     const jleAsyncStart = performance.now()
     const jleAsync = hbsAsync.compile(script, { noEscape: true })
     for (let i = 0; i < iter; i++) await jleAsync(data(i))
     const jleAsyncEnd = performance.now()
-
+    global.gc()
 
     // Show relative performance, figure out fastest and slowest
     const hbTime = hbEnd - hbStart
