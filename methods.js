@@ -65,8 +65,6 @@ function each (iterable, func) {
       const len = iterable.length
       let i = 0
       // let's also go with 8
-      for (; i < iterable.length - 7; i += 8) res += func(iterable[i], i, len) + func(iterable[i+1], i+1, len) + func(iterable[i+2], i+2, len) + func(iterable[i+3], i+3, len) + func(iterable[i+4], i+4, len) + func(iterable[i+5], i+5, len) + func(iterable[i+6], i+6, len) + func(iterable[i+7], i+7, len)
-      for (; i < iterable.length - 3; i += 4) res += func(iterable[i], i, len) + func(iterable[i+1], i+1, len) + func(iterable[i+2], i+2, len) + func(iterable[i+3], i+3, len)
       for (; i < iterable.length; i++) res += func(iterable[i], i, len)
     }
     // check if iterable is iterable
