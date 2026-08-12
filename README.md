@@ -1,240 +1,391 @@
-# Handlebars (JSON Logic Edition)
+# handlebars-jle
 
-Hey there! The documentation for this module is still being rewritten.
+Fast Handlebars-style templates powered by
+[json-logic-engine](https://github.com/TotalTechGeek/json-logic-engine).
 
-This is an implementation of Handlebars that processes templates into JSON Logic, which is then used by JSON Logic Engine to optimize and evaluate the templates.
+`handlebars-jle` parses a template directly into a JSON Logic tree. You can
+inspect or store that tree, execute it without dynamic code generation, or let
+json-logic-engine compile it into an optimized JavaScript function.
 
-This implementation of Handlebars appears to be ~25x faster than the original implementation, and allows for more variety in execution strategy.
+```js
+import { Handlebars } from 'handlebars-jle'
 
-I will admit upfront that there are some differences in this implementation compared to the original Handlebars. I will try to document these differences as I go along.
+const handlebars = new Handlebars()
+const render = handlebars.compile('Hello, {{name}}!')
 
-Some of the obvious differences include:
-
-- Asynchronous Execution is fully supported; this means you can add async helpers natively.
-- ~~Iteration is strictly done via block expressions like `#each`, implicit iteration is not supported. (Use `#each kids` instead of `#kids`)~~
-- There are significantly more built-in helpers, which I may remove or document as I publish this module.
-- Whitespace control and standalone block lines are handled directly by the grammar.
-- Inline Partials are supported, but slightly different currently.
-- ~~To avoid additional syntax, `as` is not supported in block expressions, I chose to use hash arguments in `with` instead.~~
-- `as` is supported in block expressions, however it will incur a performance cost / disable inline optimizations as it will perform a recursive lookup. In spite of the de-optimization, it should still perform quite reasonably.
-- `with` supports hash arguments, which allows for more flexibility in how the block is executed.
-- Supports an (optimized) Interpreted Mode for both synchronous and asynchronous execution; this means you execute templates in browser contexts that disallow `new Function` or `eval`.
-- If you need to access the index / private context of an above iterator, `../@index` is used instead of `@../index`. I will likely change this to match the original handlebars. This is kind of a niche edge case, but it's worth mentioning.
-
-I believe these differences are relatively minor and do not impact most use cases, and should be easy to work aorund, but I might iterate on this in the future.
-
-## Install
-
-To install:
-
-```bash
-bun install handlebars-jle
+render({ name: 'Ada' }) // "Hello, Ada!"
 ```
 
-### Conditionals
+## Why use it?
 
-Conditionals are done via the `if` block helper.
+- **Fast reusable templates.** Parse and compile once, then render repeatedly.
+- **Portable intermediate form.** Templates lower to ordinary JSON Logic data.
+- **Compiled or interpreted execution.** Interpreted mode works in environments
+  that prohibit `eval` and `new Function`.
+- **Synchronous and asynchronous engines.** Async helpers are first-class.
+- **Grammar-native whitespace handling.** `{{~ ... ~}}` and standalone block
+  lines are handled by the generated parser, without a preprocessing pass.
+- **JSON Logic extensibility.** Helpers are json-logic-engine methods and can
+  participate in its determinism and compilation optimizations.
+
+This is a focused Handlebars-compatible language, not a drop-in replacement for
+every feature and extension in Handlebars.js. See [Compatibility](#compatibility).
+
+## Installation
+
+```sh
+npm install handlebars-jle
+```
+
+`json-logic-engine` is installed as a runtime dependency. The grammar toolkit is
+only used while building this package; the generated parser and its small runtime
+are bundled into the published output.
+
+## Core API
+
+### Compile and render
+
+```js
+import { Handlebars } from 'handlebars-jle'
+
+const handlebars = new Handlebars()
+
+const render = handlebars.compile(`
+{{#if account}}
+  Welcome, {{name}}.
+{{else}}
+  Please create an account.
+{{/if}}
+`)
+
+render({ account: true, name: 'Ada' })
+```
+
+Templates escape interpolated HTML by default. Disable that per template when
+the input is trusted:
+
+```js
+const renderTrusted = handlebars.compile('{{html}}', { noEscape: true })
+renderTrusted({ html: '<strong>Hello</strong>' })
+```
+
+Triple braces are the template-level alternative:
+
+```handlebars
+{{{html}}}
+```
+
+### Compile to JSON Logic
+
+`compileToJSON()` exposes the intermediate representation without building a
+renderer:
+
+```js
+import { compileToJSON } from 'handlebars-jle'
+
+compileToJSON('Hello, {{name}}!')
+// {
+//   cat: [
+//     'Hello, ',
+//     { escape: { val: 'name' } },
+//     '!'
+//   ]
+// }
+```
+
+With `noEscape: true`, the interpolation is emitted as `{ val: 'name' }`.
+
+### Interpreted mode
+
+Compiled mode is the default. Interpreted mode retains the same API but runs the
+JSON Logic tree directly:
+
+```js
+const handlebars = new Handlebars({ interpreted: true })
+const render = handlebars.compile('Hello, {{name}}!')
+
+render({ name: 'Ada' })
+```
+
+Use interpreted mode when runtime code generation is unavailable or unwanted.
+
+## Template syntax
+
+### Conditions
 
 ```handlebars
 {{#if age}}
-    {{name}} is {{age}} years old.
+  {{name}} is {{age}} years old.
+{{else if dateOfBirth}}
+  {{name}} was born on {{dateOfBirth}}.
 {{else}}
-    {{name}}'s age is unknown.
+  {{name}}'s age is unknown.
 {{/if}}
 ```
 
-There is also support for if/else if chains
+`unless` and the inverse marker `^` are also supported:
 
 ```handlebars
-{{#if age}}
-    {{name}} is {{age}} years old.
-{{else if dob}}
-    {{name}} was born on {{dob}}.
-{{else}}
-    {{name}}'s age is unknown.
-{{/if}}
+{{#unless active}}Inactive{{^}}Active{{/unless}}
 ```
 
 ### Iteration
 
-Iteration is done via block expressions like `#each`, and the block helper is used to define the iteration context.
+Arrays, iterable values, maps, and objects can be iterated with `each`:
 
 ```handlebars
-{{#each kids}}
-    {{name}} is {{age}} years old.
+{{#each children}}
+  {{@index}}: {{name}} is {{age}}
 {{/each}}
 ```
 
-Data:
-
-```json
-[
-    { "name": "John", "age": 5 },
-    { "name": "Jane", "age": 7 }
-]
+```js
+render({
+  children: [
+    { name: 'John', age: 5 },
+    { name: 'Jane', age: 7 }
+  ]
+})
 ```
 
-And over objects,
+Inside an object or map iteration, `@key` identifies the current key. The
+special values `@first` and `@last` are available as well.
+
+Parent contexts use `../`:
 
 ```handlebars
-{{#each kids}}
-    {{@key}} is {{this}} years old.
+{{#each teams}}
+  {{#each players}}
+    {{../name}}: {{name}}
+  {{/each}}
 {{/each}}
 ```
 
-Data:
-
-```json
-{
-    "John": 5,
-    "Jane": 7
-}
-```
-
-Variable Traversal Syntax is supported with `../` and `@key` and `@index` are supported.
-
-### With
-
-The `with` block helper has been adjusted a bit from the original Handlebars. It now supports hash arguments, which allows for more flexibility in how the block is executed.
+Block parameters are supported:
 
 ```handlebars
-{{#with name='John Doe' age=27}}
-    {{name}} is {{age}} years old.
+{{#each people as |person index|}}
+  {{index}}: {{person.name}}
+{{/each}}
+```
+
+### `with`
+
+`with` accepts a context value, hash arguments, or both:
+
+```handlebars
+{{#with person}}
+  {{name}} is {{age}} years old.
 {{/with}}
 ```
 
-### Adding Helpers
-
-You can add helpers by adding methods to the JSON Logic Engine.
-
-```javascript
-import { Handlebars } from 'handlebars-jle';
-
-const hbs = new Handlebars();
-hbs.engine.addMethod('addOne', ([a]) => a + 1, { sync: true, deterministic: true });
-
-const template = hbs.compile('{{addOne age}}');
-
-template({ age: 5 }); // 6
-template({ age: 10 }); // 11
+```handlebars
+{{#with name='Ada' role='engineer'}}
+  {{name}} is an {{role}}.
+{{/with}}
 ```
 
-If your method is synchronous and deterministic (same input always produces the same output, and it will never return a promise), you should specify that in the options. This will allow the engine to optimize the method; and if synchronous, allow it to be used by `compile`
+### Subexpressions and hash arguments
 
-Here is a more interesting example, using async support:
+Helpers can be nested with parentheses and invoked with positional or hash
+arguments:
 
-```javascript
-import { AsyncHandlebars } from 'handlebars-jle';
+```handlebars
+{{uppercase (default displayName name)}}
+{{json (obj name=name age=age)}}
+```
 
-const hbs = new AsyncHandlebars();
+### Whitespace control
 
-hbs.engine.addMethod('fetch', async ([url]) => {
-    const response = await fetch(url)
-    return response.json()
+Tildes trim adjacent whitespace:
+
+```handlebars
+Hello   {{~name}}!
+{{#if ready~}}
+
+  Ready
+{{~/if}}
+```
+
+Standalone block-open, `else`, and block-close lines consume their indentation
+and line ending. Literal content inside the block keeps its own indentation and
+newlines.
+
+Escaping a complete element with a backslash leaves it literal, including
+balanced nested blocks:
+
+```handlebars
+\{{name}}
+\{{#if ready}}yes{{else}}no{{/if}}
+```
+
+## Helpers
+
+Helpers are methods on the underlying JSON Logic engine:
+
+```js
+const handlebars = new Handlebars()
+
+handlebars.engine.addMethod(
+  'addOne',
+  ([value]) => value + 1,
+  { sync: true, deterministic: true }
+)
+
+const render = handlebars.compile('{{addOne age}}')
+render({ age: 5 }) // "6"
+```
+
+Accurate method metadata allows json-logic-engine to optimize the surrounding
+tree. For a helper that accepts one unwrapped argument, its `optimizeUnary`
+option can also avoid an argument-array allocation.
+
+The package registers template-oriented helpers and aliases including `each`,
+`with`, `match`, `escape`, `json`, `obj`/`object`, `arr`/`array`, `uppercase`,
+`lowercase`, `truncate`, `isArray`, and common named arithmetic/comparison
+aliases.
+
+## Asynchronous helpers
+
+Use `AsyncHandlebars` when any helper can return a promise:
+
+```js
+import { AsyncHandlebars } from 'handlebars-jle'
+
+const handlebars = new AsyncHandlebars()
+
+handlebars.engine.addMethod('fetchUsers', async ([url]) => {
+  const response = await fetch(url)
+  return response.json()
 })
 
-const template = hbs.compile(`{{#each (fetch 'https://jsonplaceholder.typicode.com/users')}}
-@{{username}} - {{name}}
-{{/each}}`)
+const render = await handlebars.compileAsync(`
+{{#each (fetchUsers url)}}
+  @{{username}} - {{name}}
+{{/each}}
+`)
 
-template().then(console.log)
+console.log(await render({ url: 'https://example.com/users' }))
 ```
 
-Would produce:
+`compile()` is also available on `AsyncHandlebars`; it returns an async wrapper
+that resolves compilation lazily on its first call. `compileAsync()` resolves
+the compiled renderer up front and has less steady-state wrapper overhead.
 
-```plaintext
-@Bret - Leanne Graham
-@Antonette - Ervin Howell
-@Samantha - Clementine Bauch
-@Karianne - Patricia Lebsack
-@Kamren - Chelsey Dietrich
-@Leopoldo_Corkery - Mrs. Dennis Schulist
-@Elwyn.Skiles - Kurtis Weissnat
-@Maxime_Nienow - Nicholas Runolfsdottir V
-@Delphine - Glenna Reichert
-@Moriah.Stanton - Clementina DuBuque
+If every helper is synchronous, prefer `Handlebars`.
+
+## Partials
+
+Register partials on an engine instance:
+
+```js
+const handlebars = new Handlebars()
+
+handlebars.register('greeting', 'Hello, {{name}}!')
+const render = handlebars.compile('{{>greeting name="Ada"}}')
+
+render({}) // "Hello, Ada!"
 ```
 
-### Executing Templates
+Deterministic partials may be evaluated or inlined by json-logic-engine when the
+surrounding data is known. Partials also work in interpreted and asynchronous
+modes.
 
-This module supports both a compiled mode and an "interpreted" mode.
-
-The compiled mode is faster, but the interpreted mode is more flexible and can be used in environments that disallow `eval` or `new Function`.
-
-
-For example:
-
-```javascript
-
-const { Handlebars, AsyncHandlebars } = require('handlebars-jle');
-
-const hbs = new Handlebars();
-const hbsAsync = new AsyncHandlebars();
-const hbsInterpreted = new Handlebars({ interpreted: true });
-const hbsAsyncInterpreted = new AsyncHandlebars({ interpreted: true });
-
-const hello = hbs.compile('Hello, {{name}}!')
-const helloAsync = hbsAsync.compile('Hello, {{name}}!')
-const helloInterpreted = hbsInterpreted.compile('Hello, {{name}}!')
-const helloAsyncInterpreted = hbsAsyncInterpreted.compile('Hello, {{name}}!) 
-```
-
-Any of these can now be run with:
-```javascript
-hello('Jesse') // Hello, Jesse!
-helloAsync('Bob') // Promise<'Hello, Bob!'>
-helloInterpreted('Steve') // Hello, Steve!
-helloAsyncInterpreted('Tara') // Promise<Hello, Tara!>
-```
-
-If you have no async helpers to add to your templates, it's strongly recommended you use the synchronous class.
-
-While the compiler / optimizer will make the execution fully synchronous if everything in the template is not async, there is still some overhead in JavaScript engines that slow it down a bit when packing it into a promise, so it should only be used if you've added async helpers to your engine you'd like to use.
-
-
-### Adding Partials
-
-You can add partials by using `register`, 
-
-```javascript
-import { Handlebars } from 'handlebars-jle';
-
-const hbs = new Handlebars();
-hbs.register('greeting', 'Hello, {{name}}!')
-
-const template = hbs.compile('{{>greeting name="Jesse"}}');
-
-template(); // Hello, Jesse!
-```
-
-Of some note, partials that can be fully evaluated and inlined will be! In the above case, since `greeting` receives all of the information it needs as constants, it will fully evaluate the partial and inline it into the template.
-
-```javascript
-import { Handlebars } from 'handlebars-jle';
-
-const hbs = new Handlebars({ interpreted: true });
-hbs.register('greeting', 'Hello, {{name}}!')
-
-const template = hbs.compile('{{>greeting name="Jesse"}}');
-
-template(); // Hello, Jesse!
-```
-
-Works in the exact same way, but it will not use `eval` or `new Function` to compile the partial, which is useful in environments that disallow it. While this is not "compiled", this too will inline the partial if it can be fully evaluated.
-
-### Inline Partials (Experimental)
-
-Inline Partials are supported but have a slightly different syntax as they do not use the deprecated decorators syntax.
+Inline partials use a block instead of Handlebars decorator syntax:
 
 ```handlebars
 {{#inline "greeting"}}Hello, {{name}}!{{/inline}}
-{{>greeting name="Jesse"}}
+{{>greeting name="Ada"}}
 ```
 
-This will produce the same output as the previous example.
+Inline partial registration currently belongs to the engine rather than a
+lexically isolated template scope. Treat this feature as experimental when
+unrelated templates share one engine instance.
 
-The reason they are flagged as experimental is because they currently do not scope themselves exclusively to the template that registered them. This means that if you register an inline partial in one template, it will be available in all templates. This is not ideal, and I will be working on a solution to this in the future.
+## Execution modes
 
-### Adding Block Helpers
+| Class | Option/method | Result |
+| --- | --- | --- |
+| `Handlebars` | default | Compiled synchronous renderer |
+| `Handlebars` | `{ interpreted: true }` | Interpreted synchronous renderer |
+| `AsyncHandlebars` | `compile()` | Lazily compiled async renderer |
+| `AsyncHandlebars` | `compileAsync()` | Promise of a compiled async renderer |
+| `AsyncHandlebars` | `{ interpreted: true }` | Interpreted async renderer |
 
-This needs fleshed out documentation. This needs some explanation because you're able to deeply optimize the block helper in some powerful ways.
+## Compatibility
+
+The commonly used interpolation, triple-brace, helper, subexpression, hash
+argument, `if`/`unless`, `else if`, `each`, `with`, partial, block-parameter,
+parent traversal, and whitespace-control forms are implemented and covered by
+the test suite.
+
+Known differences from Handlebars.js include:
+
+- This package emits JSON Logic rather than the Handlebars compiler AST.
+- It intentionally includes additional JSON Logic-oriented helpers and aliases.
+- `with` accepts hash arguments as a convenient way to construct a context.
+- Inline partials use `{{#inline ...}}` and are currently engine-scoped.
+- An ancestor iterator's metadata is addressed as `../@index` rather than
+  `@../index`.
+- Block parameters use recursive lookup and can inhibit some inline compiler
+  optimizations.
+- Custom block helpers are json-logic-engine methods; Handlebars.js helper and
+  decorator APIs are not drop-in interfaces.
+
+If exact Handlebars.js edge-case compatibility is a requirement, validate the
+templates your application uses before migrating.
+
+## Performance
+
+The repository includes a public benchmark suite comparing `handlebars-jle`
+with Handlebars.js and Kibana's `kbn-handlebars`. It covers interpolation,
+branches, iteration, context traversal, partials, and a substantial YAML
+template—not just a single favorable expression.
+
+Selected results from a Node run of one million renders, with each template
+compiled once before its render loop:
+
+| Benchmark | Compiled JLE vs Handlebars.js | Interpreted JLE vs Handlebars.js |
+| --- | ---: | ---: |
+| `SimpleEach` | **30.9× faster** | **8.8× faster** |
+| Nested traversal | **26.5× faster** | **9.6× faster** |
+| Broad feature example | **21.9× faster** | **3.4× faster** |
+| Large YAML template | **28.9× faster** | **4.0× faster** |
+| Partials | **92.1× faster** | **5.8× faster** |
+| `@first` / `@last` iteration | **37.9× faster** | **5.7× faster** |
+
+The smallest cases can produce much larger ratios because json-logic-engine can
+collapse and inline more of the work; they are deliberately omitted from the
+highlights above. Async mode is benchmarked too, but its promise overhead makes
+it most relevant when a template actually needs asynchronous helpers.
+
+These numbers are highlights from one machine, not portable guarantees. The
+relative result varies with the template, data, Node version, and warmup. The
+benchmark models the intended usage: compile once and reuse the renderer.
+
+Run the repository benchmarks with:
+
+```sh
+npm run bench:parser
+cd bench && node --expose-gc index.js
+```
+
+Set `BENCH_ITER` to change the default one-million-render sample size.
+
+## Development
+
+The source grammar lives in `parser/handlebars.gram`. The generated parser is
+intentionally ignored by Git and recreated before tests and production builds.
+
+```sh
+npm install
+npm test
+npm run build
+```
+
+The production bundles include the generated parser runtime and leave
+`json-logic-engine` external as the package dependency.
+
+## License
+
+MIT
