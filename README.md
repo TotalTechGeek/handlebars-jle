@@ -312,6 +312,47 @@ unrelated templates share one engine instance.
 | `AsyncHandlebars` | `compileAsync()` | Promise of a compiled async renderer |
 | `AsyncHandlebars` | `{ interpreted: true }` | Interpreted async renderer |
 
+## Content Security Policy (CSP)
+
+Strict CSP configurations commonly omit `'unsafe-eval'` from `script-src`,
+which prevents runtime code generation through `eval` or `new Function`. Use
+interpreted mode in those environments:
+
+```js
+import { Handlebars } from 'handlebars-jle'
+
+const handlebars = new Handlebars({ interpreted: true })
+const render = handlebars.compile('Hello, {{name}}!')
+
+render({ name: 'Ada' })
+```
+
+In interpreted mode, `compile()` still parses the template into JSON Logic, but
+the returned renderer evaluates that tree with `engine.run()` instead of
+generating JavaScript. Registered partials follow the same interpreted path.
+Async templates are CSP-compatible as well when the async engine is explicitly
+placed in interpreted mode:
+
+```js
+import { AsyncHandlebars } from 'handlebars-jle'
+
+const handlebars = new AsyncHandlebars({ interpreted: true })
+handlebars.engine.addMethod('awaitableHelper', async ([value]) => value)
+const render = handlebars.compile('{{awaitableHelper value}}')
+
+await render({ value: 42 })
+```
+
+The default compiled mode uses json-logic-engine's dynamic compiler and
+therefore requires a policy that permits runtime code generation.
+`AsyncHandlebars` alone does not change that: `compileAsync()` is compiled mode
+unless the instance was created with `{ interpreted: true }`.
+
+CSP compatibility is not a sandbox for untrusted templates. A template can
+invoke helpers registered on its engine, so applications accepting templates
+from untrusted authors should expose only an intentionally restricted helper
+set and validate their broader security model separately.
+
 ## Compatibility
 
 The commonly used interpolation, triple-brace, helper, subexpression, hash
