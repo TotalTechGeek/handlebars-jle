@@ -1,6 +1,6 @@
 {
   "name": "handlebars-jle",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "module": "./dist/cjs/index.js",
   "main": "./dist/cjs/index.js",
   "type": "module",
