@@ -1,6 +1,5 @@
 import { AsyncLogicEngine, LogicEngine, Compiler, Constants } from "json-logic-engine";
-import { parse } from './parser/parser.min.js'
-import { preprocess } from "./preprocessor.js";
+import { parse } from './parser/jl-parser-entry.js'
 import { setupEngine } from "./methods.js";
 
 /**
@@ -101,7 +100,18 @@ export class AsyncHandlebars {
     }
   }
 
-
+  /**
+   * Compiles a handlebars template string to a function that can be run with JSON data
+   * This will produce a function with less overhead than the `compile` method.
+   * @param {string} str
+   * @param {{ noEscape?: boolean, recurse?: boolean }} options
+   * @returns {Promise<(data: any) => Promise<string>>}
+   */
+  compileAsync (script, options = {}) {
+    const logic = compileToJSON(script, { ...options, methods: this.engine.methods })
+    if (this.#interpreted) return Promise.resolve((data) => this.engine.run(logic, data))
+    return this.engine.build(logic)
+  }
 
   /**
    * Registers a partial that can be run with JSON data, uses the logic compiler
@@ -121,5 +131,5 @@ export class AsyncHandlebars {
  * @returns {*} A JSON Logic object representing the handlebars template
  */
 export function compileToJSON (str, options = {}) {
-  return parse(preprocess(str), options)
+  return parse(str, options)
 }

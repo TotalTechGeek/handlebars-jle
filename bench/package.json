@@ -1,6 +1,7 @@
 {
   "name": "bench",
   "version": "1.0.0",
+  "type": "module",
   "description": "Tests out handlebars-jle against alternatives",
   "main": "index.js",
   "author": "Jesse Daniel Mitchell",

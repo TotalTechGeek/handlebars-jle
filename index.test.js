@@ -153,6 +153,10 @@ ExampleData: {
 {{/each}}
 {{/each}}`,
 'EscapedElement': 'Hello \\{{name}}!',
+'EscapedTriple': '\\{{{raw}}}',
+'EscapedPartial': '\\{{> part x=1}}',
+'EscapedBlock': '\\{{#if x}}yes{{else}}no{{/if}}',
+'EscapedNestedBlock': '\\{{#if x}}A{{#each ys}}{{this}}{{/each}}{{else}}B{{/if}}',
 'EscapedInsideTemplate': "Hello \\n {{name}}!",
 'EscapedJSON': `{{json (obj name='<b>John</b>' age=12)}}`,
 'UnescapedJSON': `{{{json (obj name='<b>John</b>' age=12)}}}`,
@@ -226,6 +230,10 @@ ExampleData: {
  * @test #StaticInternalIndexAccess
  * @test #InternalIndexAccess, { iter: [1, 2, 3] }
  * @test #EscapedElement returns 'Hello {{name}}!'
+ * @test #EscapedTriple returns '{{{raw}}}'
+ * @test #EscapedPartial returns '{{> part x=1}}'
+ * @test #EscapedBlock returns '{{#if x}}yes{{else}}no{{/if}}'
+ * @test #EscapedNestedBlock returns '{{#if x}}A{{#each ys}}{{this}}{{/each}}{{else}}B{{/if}}'
  * @test #EscapedInsideTemplate, { name: 'John' } returns 'Hello \\n John!'
  * @test #EscapedJSON returns '{&quot;name&quot;:&quot;&lt;b&gt;John&lt;/b&gt;&quot;,&quot;age&quot;:12}'
  * @test #UnescapedJSON returns '{"name":"<b>John</b>","age":12}'

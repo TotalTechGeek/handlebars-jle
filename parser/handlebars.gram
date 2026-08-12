@@ -1,0 +1,432 @@
+// Handlebars, as a grammatik specification.
+//
+// Everything above the `methods` block is data: the token vocabulary, the lexer
+// modes that make Handlebars' context-sensitive tokenization declarative, the
+// parser rules, and JSON Logic actions naming the semantic methods below.
+//
+// The lexer uses default text mode, ordinary and standalone tag modes, and a
+// short-lived block-parameter mode. Outside a tag, whitespace and almost everything
+// else is literal text; inside one, whitespace is noise and names, arguments,
+// strings, parentheses, `=` and `|` are structured tokens. `{{{ }}}` has its own
+// closing delimiter, and a block opening may swallow the newline after it —
+// Standalone modes consume the rest of a tag-only line at the closing delimiter.
+
+grammar Handlebars;
+start Content;
+
+// -- text -------------------------------------------------------------------
+
+// Standalone block delimiters own their indentation and enter a mode whose
+// closer consumes the remainder of the line. The lookahead ensures an inline
+// tag never accidentally becomes standalone. Trimmed variants may also claim
+// preceding newlines, matching Handlebars' `{{~` behavior.
+token OpenBlockStandalone pattern "(?:\\s*\\{\\{~#|(?:(?<=\\n)|^)[ \\t]*\\{\\{#)(?=(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))"
+  mode default pushMode blockExpressionStandalone;
+token OpenEndStandalone pattern "(?:\\s*\\{\\{~/|(?:(?<=\\n)|^)[ \\t]*\\{\\{/)(?=(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))"
+  mode default pushMode expressionStandalone;
+token OpenElseIfStandalone pattern "(?:\\s*\\{\\{~else[ \\t]+if|(?:(?<=\\n)|^)[ \\t]*\\{\\{else[ \\t]+if)(?=(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))"
+  mode default pushMode expressionStandalone;
+token OpenElseStandalone pattern "(?:\\s*\\{\\{~(?:else|\\^)|(?:(?<=\\n)|^)[ \\t]*\\{\\{(?:else|\\^))(?=[\\s}~])(?=(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))"
+  mode default pushMode expressionStandalone;
+
+token OpenTriple  literal "{{{" mode default pushMode tripleExpression;
+// Each ordinary opener also accepts its trim form, which owns preceding space.
+token OpenBlock pattern "(?:\\s*\\{\\{~#|\\{\\{#)" mode default pushMode blockExpression;
+token OpenEnd pattern "(?:\\s*\\{\\{~/|\\{\\{/)" mode default pushMode expression;
+token OpenPartial pattern "(?:\\s*\\{\\{~>|\\{\\{>)" mode default pushMode expression;
+// `else if` is distinct from the terminal `else`/`^` arm. This makes branch
+// ordering structural: zero or more conditional arms, then at most one default.
+token OpenElseIf pattern "(?:\\s*\\{\\{~else|\\{\\{else)[ \\t\\r\\n]+if(?=[\\s(}])" mode default pushMode expression;
+token OpenElse pattern "(?:\\s*\\{\\{~(?:else|\\^)|\\{\\{(?:else|\\^))(?=[\\s}~])" mode default pushMode expression;
+token Open pattern "(?:\\s*\\{\\{~|\\{\\{)" mode default pushMode expression;
+
+// Any run of ordinary characters, including a `{` that does not open a tag.
+// Deliberately stops at a backslash instead of absorbing one: a backslash that
+// escapes nothing is its own text chunk, which is how the Peggy grammar and the
+// scanner this replaced both split it. The concatenation is the same either way,
+// but the JSON Logic is compared tree-for-tree.
+// Greedily keep ordinary whitespace with surrounding text. The two guards stop
+// immediately before whitespace owned by a `{{~` opener or by an indented,
+// tag-only block delimiter, allowing those higher-priority tokens to claim it.
+token Text pattern "(?:(?!\\s*\\{\\{~)(?!(?:(?<=\\n)|^)[ \\t]+\\{\\{~?(?:#|/|else(?:[ \\t]+if)?|\\^)(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))[^\\\\{]|\\{(?!\\{))+" mode default;
+
+// A backslash is its own token so `EscapedElement` can consume one before a tag.
+// Where no element follows, `Content` takes it as a literal text chunk.
+token Backslash literal "\\" mode default;
+
+// -- inside a tag -----------------------------------------------------------
+
+// The three expression modes differ only in how they end, so almost every token
+// belongs to all three.
+
+token Whitespace pattern "[ \\t\\r\\n]+"
+  mode expression mode blockExpression mode tripleExpression
+  mode expressionStandalone mode blockExpressionStandalone skip;
+
+token String pattern "\"[^\"]*\"|'[^']*'"
+  mode expression mode blockExpression mode tripleExpression
+  mode expressionStandalone mode blockExpressionStandalone;
+
+token Equals literal "=" mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone;
+token LParen literal "(" mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone;
+token RParen literal ")" mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone;
+
+// Block parameters are their own tiny lexical context. `as |person key|` is
+// syntax, not an ordinary `as` argument followed by punctuation, so recognizing
+// it here keeps StartTag from parsing and then undoing that interpretation.
+token AsBlockOpen pattern "as[ \\t\\r\\n]*\\|" mode blockExpression mode blockExpressionStandalone pushMode blockParameters;
+token BlockParamWhitespace pattern "[ \\t\\r\\n]+" mode blockParameters skip;
+token BlockParam pattern "[^\\s|.\\[\\]]+" mode blockParameters;
+token BlockParamClose literal "|" mode blockParameters popMode;
+
+// Literals defer to `Name` whenever it matches more text, so `truthy` is a name
+// and `true` is a boolean without either needing a word-boundary assertion.
+token Boolean pattern "true|false"
+  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone longerAlt Name;
+token Null literal "null"
+  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone longerAlt Name;
+token Undefined literal "undefined"
+  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone longerAlt Name;
+token Number pattern "[0-9]+"
+  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone longerAlt Name;
+
+// A bare word: anything up to whitespace, punctuation, or the closing `}}`.
+// A greedy-run rewrite of this and of `Text` was measured and changed nothing.
+token Name pattern "(?:(?!~?\\}\\})[^\\s|=()])+"
+  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone;
+
+token CloseStandalone pattern "(?:~\\}\\}[\\s]*|\\}\\}[ \\t]*(?:\\r?\\n|$))" mode expressionStandalone popMode;
+token CloseBlockStandalone pattern "(?:~\\}\\}[\\s]*|\\}\\}[ \\t]*(?:\\r?\\n|$))" mode blockExpressionStandalone popMode;
+token Close pattern "(?:~\\}\\}[\\s]*|\\}\\})" mode expression popMode;
+token CloseTriple pattern "(?:~\\}\\}\\}[\\s]*|\\}\\}\\})" mode tripleExpression popMode;
+token CloseBlock pattern "(?:~\\}\\}[\\s]*|\\}\\})" mode blockExpression popMode;
+
+// -- rules ------------------------------------------------------------------
+
+rule Content = seq(
+  label(data, many(subrule(ContentItem))),
+  action({"hbs.content":{"val":"data"}})
+);
+
+rule ContentItem = alt(
+  subrule(EscapedElement),
+  subrule(Element),
+  as(consume(Text), action({"val":"image"})),
+  as(consume(Backslash), "\\")
+);
+
+// Peggy's `"\\" Element` escapes the complete element, not merely its opening
+// tag. `text` parses that element normally but returns its exact source span, so
+// blocks — including nested blocks — remain literal without a balancing regex.
+rule EscapedElement = seq(
+  consume(Backslash),
+  label(value, text(subrule(Element))),
+  action({"val":"value"})
+);
+
+rule Element = alt(subrule(Block), subrule(SelfTag), subrule(TripleTag), subrule(PartialTag));
+
+rule Block = seq(
+  label(startTag, subrule(StartTag)),
+  label(content, subrule(Content)),
+  label(branches, many(subrule(ElseIfBranch))),
+  label(otherwise, option(subrule(ElseBranch))),
+  label(endTag, subrule(EndTag)),
+  action({"hbs.block":[
+    {"val":"startTag"},{"val":"content"},{"val":"branches"},{"val":"otherwise"},{"val":"endTag"}
+  ]})
+);
+
+rule ElseIfBranch = seq(
+  oneOf(OpenElseIf, OpenElseIfStandalone),
+  label(args, many(subrule(Arg))),
+  oneOf(Close, CloseStandalone),
+  label(content, subrule(Content)),
+  action([{"val":["args",0]},{"val":"content"}])
+);
+
+rule ElseBranch = seq(
+  oneOf(OpenElse, OpenElseStandalone),
+  oneOf(Close, CloseStandalone),
+  label(content, subrule(Content)),
+  action({"val":"content"})
+);
+
+rule StartTag = seq(
+  oneOf(OpenBlock, OpenBlockStandalone),
+  label(name, subrule(TagName)),
+  label(args, many(subrule(Arg))),
+  label(blockArgs, option(subrule(AsBlock))),
+  oneOf(CloseBlock, CloseBlockStandalone),
+  action({"hbs.startTag":[{"val":"name"},{"val":"args"},{"val":"blockArgs"}]})
+);
+
+rule AsBlock = seq(
+  consume(AsBlockOpen),
+  label(names, many(as(consume(BlockParam), action({"val":"image"})))),
+  consume(BlockParamClose),
+  action({"val":"names"})
+);
+
+rule EndTag = seq(
+  oneOf(OpenEnd, OpenEndStandalone),
+  label(name, subrule(TagName)),
+  oneOf(Close, CloseStandalone),
+  action({"val":"name"})
+);
+
+rule SelfTag = seq(
+  consume(Open), label(name, subrule(TagName)), label(args, many(subrule(Arg))),
+  consume(Close),
+  action({"hbs.selfTag":[{"val":"name"},{"val":"args"},true]})
+);
+
+rule TripleTag = seq(
+  consume(OpenTriple), label(name, subrule(TagName)), label(args, many(subrule(Arg))),
+  consume(CloseTriple),
+  action({"hbs.selfTag":[{"val":"name"},{"val":"args"},false]})
+);
+
+rule PartialTag = seq(
+  consume(OpenPartial), label(name, subrule(TagName)), label(args, many(subrule(Arg))),
+  consume(Close),
+  action({"hbs.partial":[{"val":"name"},{"val":"args"}]})
+);
+
+// The word straight after an opener is the tag's name, whatever it looks like:
+// `{{true}}` names a helper called `true`, it does not pass a boolean. The
+// scanner this replaced carried a `first` flag to say so; here the grammar
+// already knows, because there is only one place a tag name can appear.
+rule TagName = as(subrule(Word), action({"hbs.tagName":{"val":"image"}}));
+
+// Inside `( )` the name is not in head position, so `./` is left alone.
+rule FuncName = as(subrule(Word), action({"val":"image"}));
+
+// Spelling this `alt` out in both rules to save the subrule hop was measured and
+// changed nothing, so the shared rule stays.
+rule Word = alt(
+  consume(Name), consume(Boolean), consume(Null), consume(Undefined), consume(Number)
+);
+
+rule Arg = alt(
+  subrule(Func), subrule(BooleanArg), subrule(NullArg), subrule(UndefinedArg),
+  subrule(HashArg), subrule(Variable), subrule(NumberArg), subrule(StringArg)
+);
+
+rule Func = seq(
+  consume(LParen), label(name, subrule(FuncName)), label(args, many(subrule(Arg))), consume(RParen),
+  action({"hbs.func":[{"val":"name"},{"val":"args"}]})
+);
+
+rule BooleanArg = as(consume(Boolean), action({"hbs.boolean":{"val":"image"}}));
+rule NullArg = as(consume(Null), null);
+rule UndefinedArg = as(consume(Undefined), action({"hbs.undefined":[]}));
+
+rule HashArg = seq(
+  label(variable, subrule(Variable)), consume(Equals), label(data, subrule(Arg)),
+  action({"hbs.hashArg":[{"val":"variable"},{"val":"data"}]})
+);
+
+rule Variable = as(consume(Name), action({"hbs.variable":{"val":"image"}}));
+rule NumberArg = as(consume(Number), action({"hbs.number":{"val":"image"}}));
+rule StringArg = as(consume(String), action({"hbs.string":{"val":"image"}}));
+
+// -- semantics --------------------------------------------------------------
+
+methods {
+  const HASH_ARG = Symbol.for('HashArg')
+
+  /**
+   * Options and block-parameter scope for the parse in flight.
+   *
+   * The semantic actions need to know about `noEscape`, `recurse` and the
+   * registered method names, and block parameters have to be tracked across a
+   * block's whole body. Parsing is synchronous and `parseTemplate` guards
+   * against reentry, so a module-level record is safe.
+   */
+  const runtime = { options: null, blockParams: null }
+
+  // Reference counts preserve an outer binding when a nested block shadows it.
+  function addBlockParam (name) {
+    runtime.blockParams.set(name, (runtime.blockParams.get(name) || 0) + 1)
+  }
+
+  function removeBlockParam (name) {
+    const count = runtime.blockParams.get(name)
+    if (count === 1) runtime.blockParams.delete(name)
+    else runtime.blockParams.set(name, count - 1)
+  }
+
+  function amend (name, forceArray) {
+    let balance = 0
+    for (let i = 0; i < name.length; i++) {
+      if (name[i] === '[') balance++
+      if (name[i] === ']') balance--
+      if (balance < 0) throw new Error('Invalid Brackets')
+    }
+    if (balance !== 0) throw new Error('Invalid Brackets')
+    if (!forceArray && !name.includes('.')) {
+      if (name.startsWith('[') && name.endsWith(']')) return name.substring(1, name.length - 1)
+      return name
+    }
+    const parts = name.split('.')
+    let start = -1
+    for (let i = 0; i < parts.length; i++) {
+      if (parts[i].startsWith('[')) {
+        if (start !== -1) throw new Error('Invalid Open Bracket')
+        start = i
+        if (parts[i].endsWith(']')) {
+          start = -1
+          parts[i] = parts[i].substring(1, parts[i].length - 1)
+        }
+        continue
+      }
+      if (parts[i].endsWith(']')) {
+        const removed = parts.splice(start, i - start + 1)
+        const joined = removed.join('.')
+        parts.splice(start, 0, joined.substring(1, joined.length - 1))
+        i = start
+        start = -1
+        continue
+      }
+      if (parts[i].includes('[')) throw new Error('Invalid Open Bracket')
+      if (parts[i].includes(']')) throw new Error('Invalid Close Bracket')
+    }
+    return parts
+  }
+
+  function getVar (name) {
+    if (runtime.blockParams.has(name.split('.')[0])) return { rvar: name }
+    if (runtime.options.recurse) return { rvar: name }
+    let up = 0
+    while (name.startsWith('../')) {
+      up++
+      name = name.substring(3)
+    }
+    if (up && !name) return { val: [[up]] }
+    if (up) return { val: [[up], ...amend(name, true)] }
+    return { val: amend(name) }
+  }
+
+  const escaped = value => runtime.options.noEscape ? value : { escape: value }
+  const flatCat = value => value && value.cat && value.cat.length === 1 && typeof value.cat[0] === 'string'
+    ? value.cat[0]
+    : value
+
+  const helpers = {
+    content: data => ({ cat: data }),
+
+    /** A tag name in head position: `./foo` addresses `foo`. */
+    tagName: image => image.startsWith('./') ? image.substring(2) : image,
+    string: image => image.slice(1, -1),
+
+    startTag: ([name, args, rawAs]) => {
+      const asNames = rawAs || []
+      const found = name in (runtime.options.methods || {}) || name === 'with' || name === 'if' || name === 'each'
+      if (asNames.length) {
+        for (let i = 0; i < asNames.length; i++) addBlockParam(asNames[i])
+        args.push({ '%HashArg': ['as', asNames], [HASH_ARG]: true })
+      }
+      if (!found && !args.length) return { oName: name, name: '$eachOrIf', args, as: asNames }
+      return { name, args, as: asNames }
+    },
+
+    block: ([startTag, content, branches, otherwise, endTag]) => {
+      if (startTag.name !== endTag && startTag.oName !== endTag) {
+        throw new Error(`Expected {{/${startTag.name}}} but {{/${endTag}}} found.`)
+      }
+      for (let i = 0; i < startTag.as.length; i++) removeBlockParam(startTag.as[i])
+      if (startTag.name === 'if' || startTag.name === 'unless') {
+        if (startTag.name === 'unless') startTag.args[0] = { not: startTag.args[0] }
+        const values = [flatCat(content)]
+        for (let i = 0; i < branches.length; i++) {
+          const branch = branches[i]
+          values.push(branch[0], flatCat(branch[1]))
+        }
+        values.push(otherwise === null ? '' : flatCat(otherwise))
+        let direct = true
+        for (let i = 0; i < values.length; i++) {
+          const item = values[i]
+          if (!(item && (item.each || item.cat)) && typeof item !== 'string') {
+            direct = false
+            break
+          }
+        }
+        if (direct) return { if: [startTag.args[0], ...values] }
+        return { cat: { if: [startTag.args[0], ...values] } }
+      }
+      if (startTag.name === '$eachOrIf') {
+        const variable = { val: startTag.oName.split('.') }
+        return { cat: { if: [{ isArray: [variable] }, { each: [variable, content] }, { if: [variable, content, ''] }] } }
+      }
+      if (startTag.name === 'each') return { each: [...startTag.args, content] }
+      return { cat: { [startTag.name]: [...startTag.args, content] } }
+    },
+
+    selfTag: ([name, args, doEscape]) => {
+      let value
+      if (name === '.' || name === 'this') value = { val: [] }
+      else if (name === '@key' || name === '@index') value = { val: [[1], 'index'] }
+      else if (name === '@first') return { '@first': [] }
+      else if (name === '@last') return { '@last': [] }
+      else if (doEscape && name === '^') value = getVar('else')
+      else if (name.startsWith('this.')) value = { val: name.substring(5).split('.') }
+      else if (!args.length) {
+        const normalized = doEscape
+          ? name.replace(/\.\.\/@?/g, item => item.includes('@') ? '../' : '../../').replace(/\.\.\/this\.?/g, '../')
+          : name.replace(/\.\.\/@?/g, item => item.includes('@') ? item : '../../').replace(/\.\.\/this\.?/g, '../')
+        value = getVar(normalized)
+        if (doEscape && name in (runtime.options.methods || {})) {
+          return { if: [value, escaped(value), { [name]: [] }] }
+        }
+      } else {
+        value = { [name]: args }
+        if (doEscape && name === 'else') return value
+      }
+      return doEscape ? escaped(value) : value
+    },
+
+    partial: ([name, args]) => ({ '%partial': [name, ...args] }),
+    func: ([name, args]) => ({ [name]: args }),
+    boolean: value => value === 'true',
+    undefined: () => undefined,
+    number: value => +value,
+    variable: name => {
+      const value = name
+        .replace(/\.\.\/@?/g, item => item.includes('@') ? item : '../../')
+        .replace(/\.\.\/this\.?/g, '../')
+      if (value === '@index' || value === '@key') return { val: [[1], 'index'] }
+      if (value === '@first') return { '@first': [] }
+      if (value === '@last') return { '@last': [] }
+      if (value === 'this' || value === '.') return { val: [] }
+      if (value.startsWith('this.')) return getVar(value.substring(5))
+      return getVar(value)
+    },
+    hashArg: ([variable, data]) => {
+      const access = runtime.options.recurse ? 'rvar' : 'val'
+      return { '%HashArg': [variable[access], data], [HASH_ARG]: true }
+    }
+  }
+
+  /**
+   * Parses a template straight to its executable JSON Logic.
+   *
+   * `parseTokens` and `tokenize` are this generated module's own; the block is
+   * emitted into it, so the entry point is here rather than in a wrapper file.
+   */
+  export function parseTemplate (source, options = {}) {
+    if (runtime.options) throw new Error('handlebars-jle parser is not reentrant')
+    runtime.options = options
+    runtime.blockParams = new Map()
+    try {
+      return parseTokens(tokenize(source), source)
+    } finally {
+      runtime.options = null
+      runtime.blockParams = null
+    }
+  }
+
+  export default Object.fromEntries(
+    Object.entries(helpers).map(([name, method]) => [`hbs.${name}`, { method, optimizeUnary: true }])
+  )
+}

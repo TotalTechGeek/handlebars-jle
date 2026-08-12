@@ -13,8 +13,7 @@ Some of the obvious differences include:
 - Asynchronous Execution is fully supported; this means you can add async helpers natively.
 - ~~Iteration is strictly done via block expressions like `#each`, implicit iteration is not supported. (Use `#each kids` instead of `#kids`)~~
 - There are significantly more built-in helpers, which I may remove or document as I publish this module.
-- ~~The whitespace control is currently not supported in the grammar. (I may add it later) Ex. `{{~foo}}` is not supported.~~
-- Whitespace control is supported, but is handled by a preprocessor and not the grammar. This nuance probably won't affect you, but it's worth mentioning. (Essentially, the whitespace is stripped before the template is parsed)
+- Whitespace control and standalone block lines are handled directly by the grammar.
 - Inline Partials are supported, but slightly different currently.
 - ~~To avoid additional syntax, `as` is not supported in block expressions, I chose to use hash arguments in `with` instead.~~
 - `as` is supported in block expressions, however it will incur a performance cost / disable inline optimizations as it will perform a recursive lookup. In spite of the de-optimization, it should still perform quite reasonably.

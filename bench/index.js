@@ -52,7 +52,7 @@ const simpleTemplate = 'Hello, {{name}}!'
 
 if (!global.gc) throw new Error('Run with --expose-gc to enable garbage collection for benchmarking; this ensures more accurate results')
 
-async function runBench (name, script, data, iter = 1e6) {
+async function runBench (name, script, data, iter = Number(process.env.BENCH_ITER ?? 1e6)) {
     global.gc()
     const hbStart = performance.now()
     const template = Handlebars.compile(script, { noEscape: true })
@@ -83,7 +83,7 @@ async function runBench (name, script, data, iter = 1e6) {
 
 
     const jleAsyncStart = performance.now()
-    const jleAsync = hbsAsync.compile(script, { noEscape: true })
+    const jleAsync = await hbsAsync.compileAsync(script, { noEscape: true })
     for (let i = 0; i < iter; i++) await jleAsync(data(i))
     const jleAsyncEnd = performance.now()
     global.gc()

@@ -15,19 +15,22 @@
   },
   "devDependencies": {
     "c8": "^7.11.2",
-    "peggy": "^4.1.1",
+    "grammatik": "^0.1.0",
     "pineapple": "^0.21.2"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "json-logic-engine": "5.0.0"
+    "json-logic-engine": "5.0.7"
   },
   "scripts": {
     "prepublish": "npm run build",
+    "pretest": "npm run generate:parser",
     "test": "c8 --reporter=text pineapple -i *.test.js",
-    "build": "rm -f *.d.ts parser/*.d.ts && peggy --format es --cache -o parser/parser.js parser/grammar.peggy && bun build --minify parser/parser.js --outfile parser/parser.min.js && rm parser/parser.js && tsc index.js --declaration --emitDeclarationOnly --allowJs --target esnext --moduleResolution NodeNext --module NodeNext && bun build --minify index.js --outdir=dist/cjs --format cjs --external 'json-logic-engine' --sourcemap=external && echo '{\"type\": \"commonjs\"}' > dist/cjs/package.json && bun build --minify index.js --outdir=dist/esm --format esm --external 'json-logic-engine' --sourcemap=external && echo '{\"type\": \"module\"}' > dist/esm/package.json"
+    "generate:parser": "node parser/generate-jl-parser.js",
+    "build": "npm run generate:parser && rm -f *.d.ts parser/*.d.ts && tsc index.js --declaration --emitDeclarationOnly --allowJs --target esnext --moduleResolution NodeNext --module NodeNext && bun build --minify index.js --outdir=dist/cjs --format cjs --external 'json-logic-engine' --sourcemap=external && echo '{\"type\": \"commonjs\"}' > dist/cjs/package.json && bun build --minify index.js --outdir=dist/esm --format esm --external 'json-logic-engine' --sourcemap=external && echo '{\"type\": \"module\"}' > dist/esm/package.json",
+    "bench:parser": "node bench/parser.js"
   },
   "exports": {
     ".": {

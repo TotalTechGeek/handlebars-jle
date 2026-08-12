@@ -9,8 +9,9 @@ bench/
 .eslintrc.json
 perf*.js
 *.test.js
+*.psnap
 experiments/
 parser/
 /index.js
 /methods.js
-/preprocessor.js
+/bun.lockb
