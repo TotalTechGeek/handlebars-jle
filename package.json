@@ -14,7 +14,7 @@
     "url": "https://github.com/TotalTechGeek/handlebars-jle"
   },
   "devDependencies": {
-    "c8": "^7.11.2",
+    "c8": "^9.1.0",
     "grammatik": "0.1.2",
     "pineapple": "^0.21.2"
   },
