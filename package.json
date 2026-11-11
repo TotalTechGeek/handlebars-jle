@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "c8": "^7.11.2",
-    "grammatik": "^0.1.1",
+    "grammatik": "^0.1.2",
     "pineapple": "^0.21.2"
   },
   "peerDependencies": {

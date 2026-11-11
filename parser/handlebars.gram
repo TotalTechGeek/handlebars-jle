@@ -48,7 +48,13 @@ token Open pattern "(?:\\s*\\{\\{~|\\{\\{)" mode default pushMode expression;
 // Greedily keep ordinary whitespace with surrounding text. The two guards stop
 // immediately before whitespace owned by a `{{~` opener or by an indented,
 // tag-only block delimiter, allowing those higher-priority tokens to claim it.
-token Text pattern "(?:(?!\\s*\\{\\{~)(?!(?:(?<=\\n)|^)[ \\t]+\\{\\{~?(?:#|/|else(?:[ \\t]+if)?|\\^)(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))[^\\\\{]|\\{(?!\\{))+" mode default;
+// Whitespace is consumed a whole run at a time. Whether a run is followed by a `{{~` opener
+// is the same answer at every position inside it, so that guard is checked once per run; checking
+// it per character rescans the rest of the run each time, which is quadratic for long runs of
+// spaces or newlines. The indented-tag guard can only match at a line start, where it fails fast
+// unless a block delimiter follows, so it stays per position and still stops the run in front of
+// the indentation that a standalone delimiter owns.
+token Text pattern "(?:[^\\\\{\\s]|\\{(?!\\{)|(?!\\s*\\{\\{~)(?!(?:(?<=\\n)|^)[ \\t]+\\{\\{~?(?:#|/|else(?:[ \\t]+if)?|\\^)(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))\\s(?:(?!(?:(?<=\\n)|^)[ \\t]+\\{\\{~?(?:#|/|else(?:[ \\t]+if)?|\\^)(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))\\s)*)+" mode default;
 
 // A backslash is its own token so `EscapedElement` can consume one before a tag.
 // Where no element follows, `Content` takes it as a literal text chunk.
@@ -92,14 +98,14 @@ token Number pattern "[0-9]+"
 
 // A bare word: anything up to whitespace, punctuation, or the closing `}}`.
 // A greedy-run rewrite of this and of `Text` was measured and changed nothing.
-token Name pattern "(?:(?!~?\\}\\})[^\\s|=()])+"
-  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone;
-
 token CloseStandalone pattern "(?:~\\}\\}[\\s]*|\\}\\}[ \\t]*(?:\\r?\\n|$))" mode expressionStandalone popMode;
 token CloseBlockStandalone pattern "(?:~\\}\\}[\\s]*|\\}\\}[ \\t]*(?:\\r?\\n|$))" mode blockExpressionStandalone popMode;
 token Close pattern "(?:~\\}\\}[\\s]*|\\}\\})" mode expression popMode;
 token CloseTriple pattern "(?:~\\}\\}\\}[\\s]*|\\}\\}\\})" mode tripleExpression popMode;
 token CloseBlock pattern "(?:~\\}\\}[\\s]*|\\}\\})" mode blockExpression popMode;
+token Name pattern "(?:(?!~?\\}\\})[^\\s|=()])+"
+  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone;
+
 
 // -- rules ------------------------------------------------------------------
 
