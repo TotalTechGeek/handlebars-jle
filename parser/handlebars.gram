@@ -31,11 +31,19 @@ token OpenElseStandalone pattern "(?:\\s*\\{\\{~(?:else|\\^)|(?:(?<=\\n)|^)[ \\t
 
 // Comments produce nothing. On a line of their own they take the whole line,
 // as Handlebars does; `{{~!` / `~}}` trim like any other tag.
-token CommentStandalone pattern "(?:(?<=\\n)|^)[ \\t]*\\{\\{!(?:--[\\s\\S]*?--|(?:(?!\\}\\})[\\s\\S])*?)\\}\\}[ \\t]*(?:\\r?\\n|$)" mode default;
-token Comment pattern "(?:\\s*\\{\\{~|\\{\\{)!(?:--[\\s\\S]*?--(?:~\\}\\}\\s*|\\}\\})|(?:(?!~?\\}\\})[\\s\\S])*(?:~\\}\\}\\s*|\\}\\}))" mode default;
+// Both stop at the first terminator: `--}}` for `{{!-- --}}`, `}}` otherwise. A lazy
+// `[\s\S]*?` here would, when the standalone tail fails, backtrack past the first
+// `--}}` to a later one, swallowing the content between (and scanning the rest of
+// the file for every comment).
+token CommentStandalone pattern "(?:(?<=\\n)|^)[ \\t]*\\{\\{!(?:--(?:(?!--~?\\}\\})[\\s\\S])*--|(?!--)(?:(?!\\}\\})[\\s\\S])*)\\}\\}[ \\t]*(?:\\r?\\n|$)" mode default;
+token Comment pattern "(?:\\s*\\{\\{~|\\{\\{)!(?:--(?:(?!--~?\\}\\})[\\s\\S])*--(?:~\\}\\}\\s*|\\}\\})|(?!--)(?:(?!~?\\}\\})[\\s\\S])*(?:~\\}\\}\\s*|\\}\\}))" mode default;
 // A partial alone on its line: the indentation is kept (and applied to every
-// line the partial renders), and the line break after it is consumed.
-token OpenPartialStandalone pattern "(?:(?<=\\n)|^)[ \\t]*\\{\\{>(?=(?:(?!\\}\\})[^\\r\\n])*\\}\\}[ \\t]*(?:\\r?\\n|$))"
+// line the partial renders), and the line break after it is consumed. A trimmed
+// `{{~>` may also start one, as in Handlebars. Keep the alternation: grammatik
+// 0.1.4's prefilter for a pattern that *starts* with the `(?<=\n)` lookbehind
+// scans to the end of the input whenever the lookbehind fails, which made
+// tokenizing quadratic in template size.
+token OpenPartialStandalone pattern "(?:\\s*\\{\\{~>|(?:(?<=\\n)|^)[ \\t]*\\{\\{>)(?=(?:(?!\\}\\})[^\\r\\n])*\\}\\}[ \\t]*(?:\\r?\\n|$))"
   mode default pushMode expressionStandalone;
 
 // Raw blocks: `{{{{name args}}}}…{{{{/name}}}}`. The header's closer also
