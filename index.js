@@ -1,6 +1,6 @@
 import { AsyncLogicEngine, LogicEngine, Compiler, Constants } from "json-logic-engine";
 import { parse } from './parser/jl-parser-entry.js'
-import { setupEngine } from "./methods.js";
+import { setupEngine, contextReads } from "./methods.js";
 
 /**
  * Internal function to register a partial with the engine.
@@ -18,6 +18,8 @@ function registerPartial (name, script, options, engine, interpreted) {
     engine.templates[name][Constants.Sync] = isSync
     engine.templates[name].deterministic = engine.methods.map.deterministic([null, logic], { engine })
     engine.templates[name].deterministicInline = engine.methods.if.deterministic(logic, { engine })
+    engine.templates[name].reads = contextReads(logic)
+    engine.templates[name].usesPartialBlock = JSON.stringify(logic).includes('"%partialBlockContent"')
     return
   }
   const logic = compileToJSON(script, {...options, methods: engine.methods })
@@ -25,6 +27,8 @@ function registerPartial (name, script, options, engine, interpreted) {
   engine.templates[name].deterministic = engine.methods.map.deterministic([null, logic], { engine })
   engine.templates[name].deterministicInline = engine.methods.if.deterministic(logic, { engine })
   engine.templates[name][Constants.Sync] = engine.methods.map[Constants.Sync](logic, { engine })
+  engine.templates[name].reads = contextReads(logic)
+  engine.templates[name].usesPartialBlock = JSON.stringify(logic).includes('"%partialBlockContent"')
 }
 
 

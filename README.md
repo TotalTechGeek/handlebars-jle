@@ -291,16 +291,20 @@ Deterministic partials may be evaluated or inlined by json-logic-engine when the
 surrounding data is known. Partials also work in interpreted and asynchronous
 modes.
 
-Inline partials use a block instead of Handlebars decorator syntax:
+Inline partials are defined with `{{#*inline "name"}}` (or `{{#inline "name"}}`).
+As in Handlebars, a definition is scoped to the block it is written in: it is
+visible throughout that block, including before the definition, and to partials
+called from inside it, but not outside it. Definitions in a partial block's body
+are visible to the partial, which is the usual layout pattern:
 
 ```handlebars
-{{#inline "greeting"}}Hello, {{name}}!{{/inline}}
-{{>greeting name="Ada"}}
+{{!-- layout: <main>{{> content}}</main> --}}
+{{#> layout}}
+  {{#*inline "content"}}Hello, {{name}}!{{/inline}}
+{{/layout}}
 ```
 
-Inline partial registration currently belongs to the engine rather than a
-lexically isolated template scope. Treat this feature as experimental when
-unrelated templates share one engine instance.
+`../` inside an inline partial climbs from where the partial was defined.
 
 ## Execution modes
 
@@ -355,19 +359,31 @@ set and validate their broader security model separately.
 
 ## Compatibility
 
-The commonly used interpolation, triple-brace, helper, subexpression, hash
-argument, `if`/`unless`, `else if`, `each`, `with`, partial, block-parameter,
-parent traversal, and whitespace-control forms are implemented and covered by
-the test suite.
+The commonly used interpolation, triple-brace, `{{&unescaped}}`, comment,
+helper, subexpression, hash argument, `if`/`unless` (including `includeZero`),
+`else if`, `each`/`with` with `{{else}}`, inverse sections (`{{^name}}`),
+mustache-style sections, string-literal paths (`{{"a b"}}`), raw blocks,
+`@root`, `@index`/`@key`/`@first`/`@last`, partial
+(including context arguments, partial blocks with `{{> @partial-block}}`,
+`{{#*inline}}` and standalone indentation), block-parameter, parent traversal, and whitespace-control forms
+are implemented and covered by the test suite.
 
 Known differences from Handlebars.js include:
 
 - This package emits JSON Logic rather than the Handlebars compiler AST.
+- Functions in the input data are never called; `{{fn}}` renders nothing.
+- `each` over a `Map` iterates like an object (`this` is the value, `@key` the
+  map key) rather than over `[key, value]` entry pairs.
 - It intentionally includes additional JSON Logic-oriented helpers and aliases.
 - `with` accepts hash arguments as a convenient way to construct a context.
-- Inline partials use `{{#inline ...}}` and are currently engine-scoped.
-- An ancestor iterator's metadata is addressed as `../@index` rather than
-  `@../index`.
+- An inline partial does not replace a registered partial of the same name
+  inside *other* partials compiled before it; within its own template it does.
+- `{{else}}` is only supported on `if`, `unless`, `each`, `with` and mustache
+  sections. Custom block helpers receive only their body, so an inverse there
+  is a compile error rather than being silently dropped.
+- A `raw` helper is built in, so `{{{{raw}}}}…{{{{/raw}}}}` outputs its body
+  verbatim without registering one.
+- Ancestor iterator metadata is written `@../index`; `../@index` is rejected.
 - Block parameters use recursive lookup and can inhibit some inline compiler
   optimizations.
 - Custom block helpers are json-logic-engine methods; Handlebars.js helper and

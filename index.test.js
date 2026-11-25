@@ -144,12 +144,12 @@ ExampleData: {
 'NumbersInVariables': 'Hello {{ELEMENT_001}} let us compute {{ELEMENT_002 ELEMENT_003}}',
 'StaticInternalIndexAccess': `{{#each (arr 1 2 3)}}
 {{#each (arr 4 5 6)}}
-{{../@index}} {{../}}
+{{@../index}} {{../}}
 {{/each}}
 {{/each}}`,
 'InternalIndexAccess': `{{#each iter}}
 {{#each (arr 4 5 6)}}
-{{../@index}} {{../}}
+{{@../index}} {{../}}
 {{/each}}
 {{/each}}`,
 'EscapedElement': 'Hello \\{{name}}!',
