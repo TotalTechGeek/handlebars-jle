@@ -15,14 +15,14 @@
   },
   "devDependencies": {
     "c8": "^9.1.0",
-    "grammatik": "0.1.2",
+    "grammatik": "0.1.4",
     "pineapple": "^0.21.2"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "json-logic-engine": "5.0.7"
+    "json-logic-engine": "5.0.9"
   },
   "scripts": {
     "prepublish": "npm run build",
