@@ -20,23 +20,48 @@ start Content;
 // closer consumes the remainder of the line. The lookahead ensures an inline
 // tag never accidentally becomes standalone. Trimmed variants may also claim
 // preceding newlines, matching Handlebars' `{{~` behavior.
-token OpenBlockStandalone pattern "(?:\\s*\\{\\{~#|(?:(?<=\\n)|^)[ \\t]*\\{\\{#)(?=(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))"
+token OpenBlockStandalone pattern "(?:\\s*\\{\\{~(?:#|\\^(?![\\s}~]))|(?:(?<=\\n)|^)[ \\t]*\\{\\{(?:#|\\^(?![\\s}~])))(?=(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))"
   mode default pushMode blockExpressionStandalone;
 token OpenEndStandalone pattern "(?:\\s*\\{\\{~/|(?:(?<=\\n)|^)[ \\t]*\\{\\{/)(?=(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))"
   mode default pushMode expressionStandalone;
-token OpenElseIfStandalone pattern "(?:\\s*\\{\\{~else[ \\t]+if|(?:(?<=\\n)|^)[ \\t]*\\{\\{else[ \\t]+if)(?=(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))"
+token OpenElseIfStandalone pattern "(?:\\s*\\{\\{~else[ \\t]+(?:if|unless)|(?:(?<=\\n)|^)[ \\t]*\\{\\{else[ \\t]+(?:if|unless))(?=(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))"
   mode default pushMode expressionStandalone;
 token OpenElseStandalone pattern "(?:\\s*\\{\\{~(?:else|\\^)|(?:(?<=\\n)|^)[ \\t]*\\{\\{(?:else|\\^))(?=[\\s}~])(?=(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))"
   mode default pushMode expressionStandalone;
 
-token OpenTriple  literal "{{{" mode default pushMode tripleExpression;
+// Comments produce nothing. On a line of their own they take the whole line,
+// as Handlebars does; `{{~!` / `~}}` trim like any other tag.
+// Both stop at the first terminator: `--}}` for `{{!-- --}}`, `}}` otherwise. A lazy
+// `[\s\S]*?` here would, when the standalone tail fails, backtrack past the first
+// `--}}` to a later one, swallowing the content between (and scanning the rest of
+// the file for every comment).
+token CommentStandalone pattern "(?:(?<=\\n)|^)[ \\t]*\\{\\{!(?:--(?:(?!--~?\\}\\})[\\s\\S])*--|(?!--)(?:(?!\\}\\})[\\s\\S])*)\\}\\}[ \\t]*(?:\\r?\\n|$)" mode default;
+token Comment pattern "(?:\\s*\\{\\{~|\\{\\{)!(?:--(?:(?!--~?\\}\\})[\\s\\S])*--(?:~\\}\\}\\s*|\\}\\})|(?!--)(?:(?!~?\\}\\})[\\s\\S])*(?:~\\}\\}\\s*|\\}\\}))" mode default;
+// A partial alone on its line: the indentation is kept (and applied to every
+// line the partial renders), and the line break after it is consumed. A trimmed
+// `{{~>` may also start one, as in Handlebars. Keep the alternation: grammatik
+// 0.1.4's prefilter for a pattern that *starts* with the `(?<=\n)` lookbehind
+// scans to the end of the input whenever the lookbehind fails, which made
+// tokenizing quadratic in template size.
+token OpenPartialStandalone pattern "(?:\\s*\\{\\{~>|(?:(?<=\\n)|^)[ \\t]*\\{\\{>)(?=(?:(?!\\}\\})[^\\r\\n])*\\}\\}[ \\t]*(?:\\r?\\n|$))"
+  mode default pushMode expressionStandalone;
+
+// Raw blocks: `{{{{name args}}}}…{{{{/name}}}}`. The header's closer also
+// takes the body, verbatim, up to the matching end tag's opener.
+token OpenRawEnd literal "{{{{/" mode default pushMode rawEnd;
+token OpenRaw literal "{{{{" mode default pushMode rawExpression;
+token CloseRaw pattern "\\}\\}\\}\\}[\\s\\S]*?(?=\\{\\{\\{\\{/)" mode rawExpression popMode;
+token CloseRawEnd literal "}}}}" mode rawEnd popMode;
+
+// Handlebars trims around a triple-stash as `{{~{x}~}}`.
+token OpenTriple pattern "(?:\\s*\\{\\{~\\{|\\{\\{\\{)" mode default pushMode tripleExpression;
 // Each ordinary opener also accepts its trim form, which owns preceding space.
-token OpenBlock pattern "(?:\\s*\\{\\{~#|\\{\\{#)" mode default pushMode blockExpression;
+token OpenBlock pattern "(?:\\s*\\{\\{~|\\{\\{)(?:#|\\^(?![\\s}~]))" mode default pushMode blockExpression;
 token OpenEnd pattern "(?:\\s*\\{\\{~/|\\{\\{/)" mode default pushMode expression;
 token OpenPartial pattern "(?:\\s*\\{\\{~>|\\{\\{>)" mode default pushMode expression;
 // `else if` is distinct from the terminal `else`/`^` arm. This makes branch
 // ordering structural: zero or more conditional arms, then at most one default.
-token OpenElseIf pattern "(?:\\s*\\{\\{~else|\\{\\{else)[ \\t\\r\\n]+if(?=[\\s(}])" mode default pushMode expression;
+token OpenElseIf pattern "(?:\\s*\\{\\{~else|\\{\\{else)[ \\t\\r\\n]+(?:if|unless)(?=[\\s(}])" mode default pushMode expression;
 token OpenElse pattern "(?:\\s*\\{\\{~(?:else|\\^)|\\{\\{(?:else|\\^))(?=[\\s}~])" mode default pushMode expression;
 token Open pattern "(?:\\s*\\{\\{~|\\{\\{)" mode default pushMode expression;
 
@@ -54,10 +79,12 @@ token Open pattern "(?:\\s*\\{\\{~|\\{\\{)" mode default pushMode expression;
 // spaces or newlines. The indented-tag guard can only match at a line start, where it fails fast
 // unless a block delimiter follows, so it stays per position and still stops the run in front of
 // the indentation that a standalone delimiter owns.
-token Text pattern "(?:[^\\\\{\\s]|\\{(?!\\{)|(?!\\s*\\{\\{~)(?!(?:(?<=\\n)|^)[ \\t]+\\{\\{~?(?:#|/|else(?:[ \\t]+if)?|\\^)(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))\\s(?:(?!(?:(?<=\\n)|^)[ \\t]+\\{\\{~?(?:#|/|else(?:[ \\t]+if)?|\\^)(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))\\s)*)+" mode default;
+token Text pattern "(?:[^\\\\{\\s]|\\{(?!\\{)|(?!\\s*\\{\\{~)(?!(?:(?<=\\n)|^)[ \\t]+\\{\\{~?(?:#|/|else(?:[ \\t]+(?:if|unless))?|\\^|!|>)(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))\\s(?:(?!(?:(?<=\\n)|^)[ \\t]+\\{\\{~?(?:#|/|else(?:[ \\t]+(?:if|unless))?|\\^|!|>)(?:(?!\\}\\})[^\\r\\n])*~?\\}\\}[ \\t]*(?:\\r?\\n|$))\\s)*)+" mode default;
 
 // A backslash is its own token so `EscapedElement` can consume one before a tag.
 // Where no element follows, `Content` takes it as a literal text chunk.
+// `\\{{x}}` is an escaped backslash followed by a real expression.
+token EscapedBackslash pattern "\\\\\\\\(?=\\{\\{)" mode default;
 token Backslash literal "\\" mode default;
 
 // -- inside a tag -----------------------------------------------------------
@@ -67,15 +94,15 @@ token Backslash literal "\\" mode default;
 
 token Whitespace pattern "[ \\t\\r\\n]+"
   mode expression mode blockExpression mode tripleExpression
-  mode expressionStandalone mode blockExpressionStandalone skip;
+  mode expressionStandalone mode blockExpressionStandalone mode rawExpression mode rawEnd skip;
 
-token String pattern "\"[^\"]*\"|'[^']*'"
+token String pattern "\"(?:\\\\\"|[^\"])*\"|'(?:\\\\'|[^'])*'"
   mode expression mode blockExpression mode tripleExpression
-  mode expressionStandalone mode blockExpressionStandalone;
+  mode expressionStandalone mode blockExpressionStandalone mode rawExpression;
 
-token Equals literal "=" mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone;
-token LParen literal "(" mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone;
-token RParen literal ")" mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone;
+token Equals literal "=" mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone mode rawExpression;
+token LParen literal "(" mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone mode rawExpression;
+token RParen literal ")" mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone mode rawExpression;
 
 // Block parameters are their own tiny lexical context. `as |person key|` is
 // syntax, not an ordinary `as` argument followed by punctuation, so recognizing
@@ -88,23 +115,23 @@ token BlockParamClose literal "|" mode blockParameters popMode;
 // Literals defer to `Name` whenever it matches more text, so `truthy` is a name
 // and `true` is a boolean without either needing a word-boundary assertion.
 token Boolean pattern "true|false"
-  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone longerAlt Name;
+  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone mode rawExpression longerAlt Name;
 token Null literal "null"
-  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone longerAlt Name;
+  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone mode rawExpression longerAlt Name;
 token Undefined literal "undefined"
-  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone longerAlt Name;
-token Number pattern "[0-9]+"
-  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone longerAlt Name;
+  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone mode rawExpression longerAlt Name;
+token Number pattern "-?[0-9]+(?:\\.[0-9]+)?"
+  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone mode rawExpression longerAlt Name;
 
 // A bare word: anything up to whitespace, punctuation, or the closing `}}`.
 // A greedy-run rewrite of this and of `Text` was measured and changed nothing.
 token CloseStandalone pattern "(?:~\\}\\}[\\s]*|\\}\\}[ \\t]*(?:\\r?\\n|$))" mode expressionStandalone popMode;
 token CloseBlockStandalone pattern "(?:~\\}\\}[\\s]*|\\}\\}[ \\t]*(?:\\r?\\n|$))" mode blockExpressionStandalone popMode;
 token Close pattern "(?:~\\}\\}[\\s]*|\\}\\})" mode expression popMode;
-token CloseTriple pattern "(?:~\\}\\}\\}[\\s]*|\\}\\}\\})" mode tripleExpression popMode;
+token CloseTriple pattern "(?:~\\}\\}\\}[\\s]*|\\}~\\}\\}[\\s]*|\\}\\}\\})" mode tripleExpression popMode;
 token CloseBlock pattern "(?:~\\}\\}[\\s]*|\\}\\})" mode blockExpression popMode;
-token Name pattern "(?:(?!~?\\}\\})[^\\s|=()])+"
-  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone;
+token Name pattern "(?:\\[[^\\]]*\\]|(?!~?\\}\\}|\\}~\\}\\})[^\\s|=()])+"
+  mode expression mode blockExpression mode tripleExpression mode expressionStandalone mode blockExpressionStandalone mode rawExpression mode rawEnd;
 
 
 // -- rules ------------------------------------------------------------------
@@ -115,10 +142,12 @@ rule Content = seq(
 );
 
 rule ContentItem = alt(
+  as(consume(EscapedBackslash), "\\"),
   subrule(EscapedElement),
   subrule(Element),
   as(consume(Text), action({"val":"image"})),
-  as(consume(Backslash), "\\")
+  as(consume(Backslash), "\\"),
+  as(oneOf(Comment, CommentStandalone), "")
 );
 
 // Peggy's `"\\" Element` escapes the complete element, not merely its opening
@@ -130,7 +159,14 @@ rule EscapedElement = seq(
   action({"val":"value"})
 );
 
-rule Element = alt(subrule(Block), subrule(SelfTag), subrule(TripleTag), subrule(PartialTag));
+rule Element = alt(subrule(RawBlock), subrule(Block), subrule(SelfTag), subrule(TripleTag), subrule(PartialTag));
+
+rule RawBlock = seq(
+  consume(OpenRaw), label(name, subrule(TagName)), label(args, many(subrule(Arg))),
+  label(body, consume(CloseRaw)),
+  consume(OpenRawEnd), label(endTag, subrule(TagName)), consume(CloseRawEnd),
+  action({"hbs.rawBlock":[{"val":"name"},{"val":"args"},{"val":["body","image"]},{"val":"endTag"}]})
+);
 
 rule Block = seq(
   label(startTag, subrule(StartTag)),
@@ -144,11 +180,11 @@ rule Block = seq(
 );
 
 rule ElseIfBranch = seq(
-  oneOf(OpenElseIf, OpenElseIfStandalone),
+  label(open, oneOf(OpenElseIf, OpenElseIfStandalone)),
   label(args, many(subrule(Arg))),
   oneOf(Close, CloseStandalone),
   label(content, subrule(Content)),
-  action([{"val":["args",0]},{"val":"content"}])
+  action({"hbs.elseBranch":[{"val":["open","image"]},{"val":"args"},{"val":"content"}]})
 );
 
 rule ElseBranch = seq(
@@ -159,12 +195,12 @@ rule ElseBranch = seq(
 );
 
 rule StartTag = seq(
-  oneOf(OpenBlock, OpenBlockStandalone),
+  label(open, oneOf(OpenBlock, OpenBlockStandalone)),
   label(name, subrule(TagName)),
   label(args, many(subrule(Arg))),
   label(blockArgs, option(subrule(AsBlock))),
   oneOf(CloseBlock, CloseBlockStandalone),
-  action({"hbs.startTag":[{"val":"name"},{"val":"args"},{"val":"blockArgs"}]})
+  action({"hbs.startTag":[{"val":"name"},{"val":"args"},{"val":"blockArgs"},{"val":["open","image"]}]})
 );
 
 rule AsBlock = seq(
@@ -194,9 +230,9 @@ rule TripleTag = seq(
 );
 
 rule PartialTag = seq(
-  consume(OpenPartial), label(name, subrule(TagName)), label(args, many(subrule(Arg))),
-  consume(Close),
-  action({"hbs.partial":[{"val":"name"},{"val":"args"}]})
+  label(open, oneOf(OpenPartial, OpenPartialStandalone)), label(name, subrule(TagName)), label(args, many(subrule(Arg))),
+  oneOf(Close, CloseStandalone),
+  action({"hbs.partial":[{"val":"name"},{"val":"args"},{"val":["open","image"]}]})
 );
 
 // The word straight after an opener is the tag's name, whatever it looks like:
@@ -211,7 +247,7 @@ rule FuncName = as(subrule(Word), action({"val":"image"}));
 // Spelling this `alt` out in both rules to save the subrule hop was measured and
 // changed nothing, so the shared rule stays.
 rule Word = alt(
-  consume(Name), consume(Boolean), consume(Null), consume(Undefined), consume(Number)
+  consume(Name), consume(String), consume(Boolean), consume(Null), consume(Undefined), consume(Number)
 );
 
 rule Arg = alt(
@@ -250,7 +286,10 @@ methods {
    * block's whole body. Parsing is synchronous and `parseTemplate` guards
    * against reentry, so a module-level record is safe.
    */
-  const runtime = { options: null, blockParams: null }
+  const runtime = { options: null, blockParams: null, inlineNames: null }
+
+  /** Marks an `{{#*inline}}` definition until its enclosing block's content collects it. */
+  const INLINE_DEF = Symbol('InlineDefinition')
 
   // Reference counts preserve an outer binding when a nested block shadows it.
   function addBlockParam (name) {
@@ -301,17 +340,80 @@ methods {
     return parts
   }
 
+  /**
+   * Ancestor loop metadata is written as in Handlebars, `@../index`; it is
+   * rewritten to `../@index` for `ancestorMeta`. The reverse spelling is an error.
+   */
+  const ancestorData = name => {
+    // `this/text` is the old spelling of `this.text`.
+    if (name.charCodeAt(4) === 47 && name.startsWith('this/')) name = 'this.' + name.substring(5)
+    if (name.charCodeAt(0) === 64) return name.startsWith('@../') ? name.replace(/^@((?:\.\.\/)+)/, '$1@') : name
+    if (name.startsWith('../') && /^(?:\.\.\/)+@/.test(name)) {
+      throw new Error(`Invalid path ${name}: write ancestor data as ${name.replace(/^((?:\.\.\/)+)@/, '@$1')}`)
+    }
+    return name
+  }
+
+  /**
+   * `../@index` and friends: iteration metadata `n` scopes up. Each `each`
+   * scope is `[meta, context, parent]`, so the metadata `n` loops out sits
+   * `1 + 2n` steps up the chain.
+   */
+  function ancestorMeta (name) {
+    const match = /^((?:\.\.\/)+)@(index|key|first|last)$/.exec(name)
+    if (!match) return null
+    const climb = [1 + match[1].length / 3 * 2]
+    if (match[2] === 'index') return { val: [climb, 'position'] }
+    if (match[2] === 'key') return { val: [climb, 'index'] }
+    if (match[2] === 'first') return { '===': [{ val: [climb, 'position'] }, 0] }
+    return { '===': [{ val: [climb, 'position'] }, { '-': [{ val: [climb, 'length'] }, 1] }] }
+  }
+
+  /** The plain name a partial-block's `{{#> name}}` argument was parsed into. */
+  function partialName (arg) {
+    if (typeof arg === 'string') return arg
+    if (arg && typeof arg.val === 'string') return arg.val
+    if (arg && Array.isArray(arg.val)) return arg.val.join('.')
+    if (arg && typeof arg.rvar === 'string') return arg.rvar
+    throw new Error('Invalid partial block name')
+  }
+
+  /**
+   * Keys that exist on every object through its prototype. As in Handlebars,
+   * they are only readable when the data defines them itself. They can be seen
+   * at parse time, so only paths naming one pay for the own-property check.
+   */
+  const PROTOTYPE_KEYS = new Set(['constructor', '__proto__', '__defineGetter__', '__defineSetter__',
+    '__lookupGetter__', '__lookupSetter__', 'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable',
+    'toLocaleString', 'toString', 'valueOf', 'prototype'])
+
+  function guardPath (logic) {
+    const path = logic.val
+    const parts = Array.isArray(path) ? path : [path]
+    let start = Array.isArray(parts[0]) ? 1 : 0
+    let risky = false
+    for (let i = start; i < parts.length; i++) if (PROTOTYPE_KEYS.has(parts[i])) { risky = true; break }
+    if (!risky) return logic
+    return { '%ownPath': [start ? { val: [parts[0]] } : { val: [] }, parts.slice(start)] }
+  }
+
+  const isMethod = name => Object.prototype.hasOwnProperty.call(runtime.options.methods || {}, name)
+
   function getVar (name) {
     if (runtime.blockParams.has(name.split('.')[0])) return { rvar: name }
+    if (name === '@root') return { '%root': [] }
+    if (name.startsWith('@root.')) return { '%root': [amend(name.substring(6), true)] }
     if (runtime.options.recurse) return { rvar: name }
     let up = 0
     while (name.startsWith('../')) {
       up++
       name = name.substring(3)
     }
+    // Handlebars' older `a/b` path separator.
+    if (name.includes('/') && !name.includes('[')) name = name.replace(/\//g, '.')
     if (up && !name) return { val: [[up]] }
-    if (up) return { val: [[up], ...amend(name, true)] }
-    return { val: amend(name) }
+    if (up) return guardPath({ val: [[up], ...amend(name, true)] })
+    return guardPath({ val: amend(name) })
   }
 
   const escaped = value => runtime.options.noEscape ? value : { escape: value }
@@ -320,29 +422,80 @@ methods {
     : value
 
   const helpers = {
-    content: data => ({ cat: data }),
+    // Inline partial definitions are hoisted out of the content they appear in
+    // and scope over all of it, as Handlebars' inline decorators do.
+    content: data => {
+      let defs = null
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i]
+        if (item && item[INLINE_DEF]) {
+          defs = defs || {}
+          defs[item.name] = item.content
+        }
+      }
+      if (!defs) return { cat: data }
+      return { '%inlineScope': [defs, { cat: data.filter(item => !(item && item[INLINE_DEF])) }] }
+    },
 
     /** A tag name in head position: `./foo` addresses `foo`. */
-    tagName: image => image.startsWith('./') ? image.substring(2) : image,
-    string: image => image.slice(1, -1),
+    tagName: image => {
+      const first = image.charCodeAt(0)
+      // `{{"a b"}}` reads the property `a b`, exactly as `{{[a b]}}` does.
+      if (first === 34 || first === 39) return '[' + helpers.string(image) + ']'
+      // `{{12.34}}` reads the property `12.34`.
+      if (/^-?[0-9]+\.[0-9]+$/.test(image)) return '[' + image + ']'
+      return image.startsWith('./') ? image.substring(2) : image
+    },
+    // Only the string's own quote can be escaped, as in Handlebars.
+    string: image => image.charCodeAt(0) === 34
+      ? image.slice(1, -1).replace(/\\"/g, '"')
+      : image.slice(1, -1).replace(/\\'/g, "'"),
 
-    startTag: ([name, args, rawAs]) => {
+    startTag: ([name, args, rawAs, open]) => {
       const asNames = rawAs || []
-      const found = name in (runtime.options.methods || {}) || name === 'with' || name === 'if' || name === 'each'
+      const inverse = open.charCodeAt(open.length - 1) === 94
+      if (name.length > 1 && name.charCodeAt(0) === 62) {
+        args.unshift(name.substring(1))
+        name = '>'
+      }
+      if (name === '>') {
+        if (!args.length) throw new Error('Partial block requires a name')
+        return { name: '>', partial: partialName(args[0]), args: args.slice(1), as: asNames, inverse }
+      }
+      if (name === '*inline') name = "inline"
+      const found = isMethod(name) || name === 'with' || name === 'if' || name === 'each'
       if (asNames.length) {
         for (let i = 0; i < asNames.length; i++) addBlockParam(asNames[i])
         args.push({ '%HashArg': ['as', asNames], [HASH_ARG]: true })
       }
-      if (!found && !args.length) return { oName: name, name: '$eachOrIf', args, as: asNames }
-      return { name, args, as: asNames }
+      if (!found && !args.length) return { oName: name, name: '$eachOrIf', args, as: asNames, inverse }
+      return { name, args, as: asNames, inverse }
     },
 
     block: ([startTag, content, branches, otherwise, endTag]) => {
-      if (startTag.name !== endTag && startTag.oName !== endTag) {
-        throw new Error(`Expected {{/${startTag.name}}} but {{/${endTag}}} found.`)
+      const expected = startTag.partial ?? startTag.oName ?? startTag.name
+      if (startTag.name !== endTag && expected !== endTag) {
+        throw new Error(`Expected {{/${expected}}} but {{/${endTag}}} found.`)
       }
       for (let i = 0; i < startTag.as.length; i++) removeBlockParam(startTag.as[i])
+      // `{{^x}}a{{/x}}` is `{{#x}}{{else}}a{{/x}}`.
+      if (startTag.inverse) {
+        const body = otherwise === null ? { cat: [] } : otherwise
+        otherwise = content
+        content = body
+      }
+      if (startTag.name === '>') {
+        return { '%partialBlock': [startTag.partial, content, ...startTag.args] }
+      }
       if (startTag.name === 'if' || startTag.name === 'unless') {
+        for (let i = 1; i < startTag.args.length; i++) {
+          const hash = startTag.args[i]
+          if (hash && hash[HASH_ARG] && hash['%HashArg'][0] === 'includeZero') {
+            startTag.args.splice(i, 1)
+            if (hash['%HashArg'][1] === true) startTag.args[0] = { or: [startTag.args[0], { '===': [startTag.args[0], 0] }] }
+            break
+          }
+        }
         if (startTag.name === 'unless') startTag.args[0] = { not: startTag.args[0] }
         const values = [flatCat(content)]
         for (let i = 0; i < branches.length; i++) {
@@ -361,28 +514,77 @@ methods {
         if (direct) return { if: [startTag.args[0], ...values] }
         return { cat: { if: [startTag.args[0], ...values] } }
       }
-      if (startTag.name === '$eachOrIf') {
-        const variable = { val: startTag.oName.split('.') }
-        return { cat: { if: [{ isArray: [variable] }, { each: [variable, content] }, { if: [variable, content, ''] }] } }
+      // `{{else if …}}` chains form the inverse of any other block.
+      let inverseBody = otherwise === null ? '' : flatCat(otherwise)
+      if (branches.length) {
+        const chain = []
+        for (let i = 0; i < branches.length; i++) chain.push(branches[i][0], flatCat(branches[i][1]))
+        inverseBody = { cat: { if: [...chain, inverseBody] } }
+        if (otherwise === null) otherwise = inverseBody
       }
-      if (startTag.name === 'each') return { each: [...startTag.args, content] }
+      if (startTag.name === '$eachOrIf') {
+        // Mustache sections: arrays iterate, `true` keeps the context, other
+        // truthy values become the context, and falsy/empty takes the inverse.
+        const variable = startTag.oName === '.' || startTag.oName === 'this' ? { val: [] } : guardPath({ val: amend(startTag.oName, true) })
+        const iterate = { each: [variable, content] }
+        return {
+          cat: {
+            if: [
+              { isArray: [variable] }, otherwise === null ? iterate : { if: [{ hasItems: variable }, iterate, inverseBody] },
+              { '===': [variable, true] }, content,
+              { '%noSection': variable }, inverseBody,
+              { with: [variable, content] }
+            ]
+          }
+        }
+      }
+      if (startTag.name === 'each') {
+        const iterate = { each: [...startTag.args, content] }
+        if (otherwise === null) return iterate
+        return { if: [{ hasItems: startTag.args[0] }, iterate, inverseBody] }
+      }
+      if (startTag.name === 'inline') {
+        const name = startTag.args[0]
+        if (typeof name !== 'string') throw new Error('An inline partial needs a string name: {{#*inline "name"}}')
+        runtime.inlineNames.add(name)
+        return { [INLINE_DEF]: true, name, content }
+      }
+      if (otherwise !== null && startTag.name === 'with' && startTag.args.length && !startTag.args[0][HASH_ARG]) {
+        return { if: [{ '%isEmpty': startTag.args[0] }, inverseBody, { cat: { with: [...startTag.args, content] } }] }
+      }
+      // Other block helpers receive only their body; rather than drop an inverse silently, refuse it.
+      if (otherwise !== null) {
+        throw new Error(`{{else}} is not supported in {{#${startTag.name}}}: only if, unless, each, with and sections take an inverse`)
+      }
       return { cat: { [startTag.name]: [...startTag.args, content] } }
     },
 
     selfTag: ([name, args, doEscape]) => {
       let value
+      // `{{&x}}` is the unescaped form, like `{{{x}}}`.
+      if (doEscape && name.charCodeAt(0) === 38) {
+        doEscape = false
+        if (name === '&') {
+          if (!args.length) throw new Error('Expected an expression after &')
+          return args[0]
+        }
+        name = name.substring(1)
+      }
+      name = ancestorData(name)
       if (name === '.' || name === 'this') value = { val: [] }
-      else if (name === '@key' || name === '@index') value = { val: [[1], 'index'] }
+      else if ((value = ancestorMeta(name))) { /* metadata of an enclosing loop */ }
+      else if (name === '@key') value = { '@key': [] }
+      else if (name === '@index') value = { '@index': [] }
       else if (name === '@first') return { '@first': [] }
       else if (name === '@last') return { '@last': [] }
       else if (doEscape && name === '^') value = getVar('else')
-      else if (name.startsWith('this.')) value = { val: name.substring(5).split('.') }
+      else if (name.startsWith('this.')) value = guardPath({ val: name.substring(5).split('.') })
       else if (!args.length) {
         const normalized = doEscape
           ? name.replace(/\.\.\/@?/g, item => item.includes('@') ? '../' : '../../').replace(/\.\.\/this\.?/g, '../')
           : name.replace(/\.\.\/@?/g, item => item.includes('@') ? item : '../../').replace(/\.\.\/this\.?/g, '../')
         value = getVar(normalized)
-        if (doEscape && name in (runtime.options.methods || {})) {
+        if (doEscape && isMethod(name)) {
           return { if: [value, escaped(value), { [name]: [] }] }
         }
       } else {
@@ -392,16 +594,39 @@ methods {
       return doEscape ? escaped(value) : value
     },
 
-    partial: ([name, args]) => ({ '%partial': [name, ...args] }),
+    elseBranch: ([open, args, content]) => {
+      const condition = args[0]
+      return [open.endsWith('unless') ? { not: condition } : condition, content]
+    },
+
+    rawBlock: ([name, args, body, endTag]) => {
+      if (name !== endTag) throw new Error(`Expected {{{{/${name}}}}} but {{{{/${endTag}}}}} found.`)
+      const content = body.substring(4)
+      // A registered helper receives the verbatim body as its block content;
+      // otherwise it is an ordinary section over that text, as in Handlebars.
+      return helpers.block([helpers.startTag([name, args, null, '{{#']), { cat: [content] }, [], null, name])
+    },
+
+    partial: ([name, args, open]) => {
+      if (name === '@partial-block') return { '%partialBlockContent': [] }
+      if (name.charCodeAt(0) === 91 && name.endsWith(']')) name = name.slice(1, -1)
+      const call = { '%partial': [name, ...args] }
+      // A standalone partial's image is its indentation followed by `{{>`.
+      const indent = open.length > 3 ? open.substring(0, open.length - 3) : ''
+      return indent && /^[ \t]+$/.test(indent) ? { '%indent': [indent, call] } : call
+    },
     func: ([name, args]) => ({ [name]: args }),
     boolean: value => value === 'true',
     undefined: () => undefined,
     number: value => +value,
     variable: name => {
-      const value = name
+      const meta = ancestorMeta(ancestorData(name))
+      if (meta) return meta
+      const value = ancestorData(name)
         .replace(/\.\.\/@?/g, item => item.includes('@') ? item : '../../')
         .replace(/\.\.\/this\.?/g, '../')
-      if (value === '@index' || value === '@key') return { val: [[1], 'index'] }
+      if (value === '@key') return { '@key': [] }
+      if (value === '@index') return { '@index': [] }
       if (value === '@first') return { '@first': [] }
       if (value === '@last') return { '@last': [] }
       if (value === 'this' || value === '.') return { val: [] }
@@ -415,6 +640,27 @@ methods {
   }
 
   /**
+   * A call to a partial this template defines inline must be resolved when it
+   * runs, through the inline scopes around it, rather than bound at compile time
+   * to a registered partial of the same name.
+   */
+  function scopePartialCalls (logic, names) {
+    if (!logic || typeof logic !== 'object') return
+    if (Array.isArray(logic)) {
+      for (let i = 0; i < logic.length; i++) scopePartialCalls(logic[i], names)
+      return
+    }
+    for (const op in logic) {
+      const args = logic[op]
+      if ((op === '%partial' || op === '%partialBlock') && Array.isArray(args) && names.has(args[0])) {
+        delete logic[op]
+        logic[op + 'Scoped'] = args
+      }
+      scopePartialCalls(args, names)
+    }
+  }
+
+  /**
    * Parses a template straight to its executable JSON Logic.
    *
    * `parseTokens` and `tokenize` are this generated module's own; the block is
@@ -424,11 +670,15 @@ methods {
     if (runtime.options) throw new Error('handlebars-jle parser is not reentrant')
     runtime.options = options
     runtime.blockParams = new Map()
+    runtime.inlineNames = new Set()
     try {
-      return parseTokens(tokenize(source), source)
+      const logic = parseTokens(tokenize(source), source)
+      if (runtime.inlineNames.size) scopePartialCalls(logic, runtime.inlineNames)
+      return logic
     } finally {
       runtime.options = null
       runtime.blockParams = null
+      runtime.inlineNames = null
     }
   }
 
